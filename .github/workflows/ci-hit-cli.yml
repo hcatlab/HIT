@@ -48,3 +48,6 @@ jobs:
 
       - name: Check formatting with Ormolu
         uses: haskell-actions/run-ormolu@v16
+        with:
+          pattern: |
+            src/**/*.hs
