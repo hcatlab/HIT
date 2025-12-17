@@ -1,0 +1,41 @@
+name: ci-hit
+
+on:
+  push:
+    paths:
+      - "hit/**"
+      - ".github/workflows/ci-hit.yml"
+  pull_request:
+    paths:
+      - "hit/**"
+      - ".github/workflows/ci-hit.yml"
+
+jobs:
+  build-hit:
+    name: Build hit backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hit
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Haskell
+        uses: haskell/actions/setup@v2
+        with:
+          ghc-version: "9.10.2"
+          cabal-version: "3.10.1.0"
+
+      - name: Cache cabal store
+        uses: actions/cache@v4
+        with:
+          path: ~/.cabal/store
+          key: ${{ runner.os }}-cabal-${{ hashFiles('cabal.project', 'cabal.project.local', '**/*.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-cabal-
+
+      - name: Build
+        run: |
+          cabal update
+          cabal build

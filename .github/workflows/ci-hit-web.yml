@@ -1,0 +1,41 @@
+name: ci-hit-web
+
+on:
+  push:
+    paths:
+      - "hit-web/**"
+      - ".github/workflows/ci-hit-web.yml"
+  pull_request:
+    paths:
+      - "hit-web/**"
+      - ".github/workflows/ci-hit-web.yml"
+
+jobs:
+  build-hit-web:
+    name: Build hit-web frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hit-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('hit-web/package-lock.json', 'hit-web/npm-shrinkwrap.json', 'hit-web/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build:prod
