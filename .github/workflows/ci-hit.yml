@@ -39,3 +39,12 @@ jobs:
         run: |
           cabal update
           cabal build
+
+      - name: Setup HLint
+        uses: haskell-actions/hlint-setup@v2
+
+      - name: Run HLint
+        uses: haskell-actions/hlint-run@v2
+
+      - name: Check formatting with Ormolu
+        uses: haskell-actions/run-ormolu@v16
