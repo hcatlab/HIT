@@ -27,6 +27,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Switch off XDG directories for cabal (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p ~/.cabal
+
       - name: Set up Haskell
         uses: haskell-actions/setup@v2
         with:
