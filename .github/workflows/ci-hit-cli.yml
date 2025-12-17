@@ -47,7 +47,7 @@ jobs:
         uses: haskell-actions/hlint-run@v2
 
       - name: Check formatting with Ormolu
-        uses: haskell-actions/run-ormolu@v16
+        uses: haskell-actions/run-ormolu@v17
         with:
           pattern: |
             src/**/*.hs
