@@ -37,5 +37,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Install elm-format
+        run: |
+          npm install -g elm-format
+          echo "$(npm bin -g)" >> $GITHUB_PATH
+
+      - name: Check Elm formatting
+        uses: sparksp/elm-format-action@v1
+        with:
+          elm_files: hit-web/src/
+          elm_format: elm-format
+          elm_glob: true
+
       - name: Build
         run: npm run build:prod
