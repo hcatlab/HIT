@@ -27,7 +27,7 @@ jobs:
           node-version: "20"
 
       - name: Cache npm
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.npm
           key: ${{ runner.os }}-npm-${{ hashFiles('hit-web/package-lock.json', 'hit-web/npm-shrinkwrap.json', 'hit-web/package.json') }}
