@@ -17,8 +17,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["latest", "9.12", "9.10"]
-        cabal: ["latest"]
+        ghc: ["latest", "9.12", "9.10", "9.8", "9.6"]
+        cabal: ["latest", "3.16", "3.14", "3.12", "3.10"]
         os: ["ubuntu-latest"]
     defaults:
       run:
