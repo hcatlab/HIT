@@ -11,14 +11,14 @@ on:
       - ".github/workflows/ci-hit-cli.yml"
 
 jobs:
-  build-hit-cli:
+  build:
     name: Build hit-cli (ghc-${{ matrix.ghc }} cabal-${{ matrix.cabal }} on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         ghc: ["latest", "9.12", "9.10"]
-        cabal: ["latest"]
+        cabal: ["latest", "3.16", "3.14"]
         os: ["ubuntu-latest"]
     defaults:
       run:
@@ -69,6 +69,16 @@ jobs:
 
       - name: Build
         run: cabal build all
+
+  lint:
+    name: Lint hit-cli
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hit-cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
 
       - name: Setup HLint
         uses: haskell-actions/hlint-setup@v2
