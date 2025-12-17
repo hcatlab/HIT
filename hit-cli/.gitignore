@@ -1,0 +1,41 @@
+# Cabal
+dist/
+dist-newstyle/
+cabal.project.local
+cabal.project.local~
+*.chi
+*.chs.h
+*.dyn_hi
+*.dyn_o
+*.hi
+*.o
+*.p_hi
+*.p_o
+
+# Stack
+.stack-work/
+stack.yaml.lock
+
+# Build artifacts
+dist
+dist-newstyle
+cabal-dev
+*.o
+*.a
+.hpc
+.HTF
+.ghc.environment.*
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.project
+.classpath
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

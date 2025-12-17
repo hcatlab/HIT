@@ -1,0 +1,42 @@
+cabal-version:      2.4
+name:               hit
+version:            0.1.0.0
+license:            MIT
+author:
+maintainer:
+category:           Web
+build-type:         Simple
+
+library
+  exposed-modules:
+    Lib
+  build-depends:
+    base >=4.14,
+    servant-server >=0.19,
+    wai >=3.2,
+    wai-cors >=0.2,
+    warp >=3.3,
+    aeson >=2.0,
+    bytestring >=0.11,
+    text >=1.2,
+    containers >=0.6,
+    time >=1.9,
+    uuid >=1.3,
+    transformers >=0.5
+  hs-source-dirs:   src
+  default-language: GHC2021
+  ghc-options:      -Wall -O2
+
+executable hit-server
+  main-is:          Main.hs
+  other-modules:
+  build-depends:
+    base >=4.14,
+    hit,
+    servant-server >=0.19,
+    wai >=3.2,
+    wai-cors >=0.2,
+    warp >=3.3
+  hs-source-dirs:   app
+  default-language: GHC2021
+  ghc-options:      -Wall -O2 -threaded

@@ -1,0 +1,23 @@
+cabal-version:      2.4
+name:               hit-cli
+version:            0.1.0.0
+license:            MIT
+author:
+maintainer:
+category:           CLI
+build-type:         Simple
+
+executable hit
+  main-is:          Main.hs
+  other-modules:
+  build-depends:
+    base >=4.14,
+    aeson >=2.0,
+    bytestring >=0.11,
+    text >=1.2,
+    http-client >=0.7,
+    http-types >=0.12,
+    optparse-applicative >=0.16
+  hs-source-dirs:   src
+  default-language: GHC2021
+  ghc-options:      -Wall -O2 -threaded

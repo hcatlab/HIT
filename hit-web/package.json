@@ -1,0 +1,23 @@
+{
+  "scripts": {
+    "watch:sass": "sass --load-path=node_modules/@picocss/pico/css --watch sass:css",
+    "build:sass": "sass --load-path=node_modules/@picocss/pico/css sass:css --style=compressed",
+    "build:elm": "elm make src/Main.elm --output dist/main.js",
+    "build:elm:prod": "elm make src/Main.elm --output dist/main.js --optimize",
+    "build": "npm run build:sass && npm run build:elm",
+    "build:prod": "npm run build:sass && npm run build:elm:prod",
+    "watch:elm": "elm-live src/Main.elm --start-page index.html -- --output dist/main.js",
+    "dev": "npm run watch:sass & npm run watch:elm",
+    "start": "npm run dev"
+  },
+  "dependencies": {
+    "@picocss/pico": "^2.1.1"
+  },
+  "devDependencies": {
+    "elm": "^0.19.1-6",
+    "elm-format": "^0.8.8",
+    "elm-json": "^0.2.13",
+    "elm-live": "^4.0.2",
+    "sass": "^1.69.0"
+  }
+}
