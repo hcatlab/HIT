@@ -33,6 +33,7 @@ jobs:
           mkdir -p ~/.cabal
 
       - name: Set up Haskell
+        id: setup
         uses: haskell-actions/setup@v2
         with:
           ghc-version: ${{ matrix.ghc }}
