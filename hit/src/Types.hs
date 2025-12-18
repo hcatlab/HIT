@@ -45,19 +45,21 @@ instance FromJSON Interval where
       "weekly" -> return Weekly
       _ -> fail "Invalid Interval"
 
+newtype Hours = Hours {getHours :: [Int]} deriving (Show, Eq, Generic, ToJSON, FromJSON)
+
 data Weekdays = Weekdays
-  { monday :: [Int],
-    tuesday :: [Int],
-    wednesday :: [Int],
-    thursday :: [Int],
-    friday :: [Int],
-    saturday :: [Int],
-    sunday :: [Int]
+  { monday :: Hours,
+    tuesday :: Hours,
+    wednesday :: Hours,
+    thursday :: Hours,
+    friday :: Hours,
+    saturday :: Hours,
+    sunday :: Hours
   }
   deriving (Show, Eq, Generic, ToJSON, FromJSON)
 
 data Deadline :: Interval -> Type where
-  DayHours :: [Int] -> Deadline Daily
+  DayHours :: Hours -> Deadline Daily
   WeekHours :: Weekdays -> Deadline Weekly
 
 deriving instance Show (Deadline p)
