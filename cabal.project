@@ -1,0 +1,4 @@
+packages: */*.cabal
+jobs: $ncpus
+keep-going: true
+tests: True
