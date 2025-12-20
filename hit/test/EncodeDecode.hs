@@ -12,6 +12,7 @@ import Data.Aeson (FromJSON, ToJSON, eitherDecode, encode)
 import Data.ByteString.Lazy qualified as LBS
 import Data.ByteString.Lazy.UTF8 qualified as LBU
 import Data.Containers.ListUtils (nubInt)
+import HIT.Types
 import Test.QuickCheck
   ( Arbitrary (..),
     Gen,
@@ -26,7 +27,6 @@ import Test.QuickCheck.Instances.Text ()
 import Test.QuickCheck.Instances.UUID ()
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck (Property, testProperty)
-import Types
 
 encodeDecode :: (Eq a, Show a, ToJSON a, FromJSON a) => a -> Property
 encodeDecode x =

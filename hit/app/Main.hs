@@ -3,7 +3,7 @@
 
 module Main where
 
-import Lib
+import HIT.Api
 import Network.Wai ()
 import Network.Wai.Handler.Warp (run)
 import Network.Wai.Middleware.Cors (simpleCors)
