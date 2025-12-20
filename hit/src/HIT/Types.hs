@@ -9,6 +9,7 @@ module HIT.Types
     module HIT.Types.Interval,
     module HIT.Types.Sort,
     module HIT.Types.State,
+    module HIT.Types.User,
   )
 where
 
@@ -20,3 +21,4 @@ import HIT.Types.Intention
 import HIT.Types.Interval
 import HIT.Types.Sort
 import HIT.Types.State
+import HIT.Types.User

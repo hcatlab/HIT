@@ -132,6 +132,12 @@ instance Arbitrary (Intention Weekly) where
       <*> arbitrary
       <*> arbitrary
 
+instance Arbitrary ApiToken where
+  arbitrary = ApiToken <$> arbitrary
+
+instance Arbitrary PublicUser where
+  arbitrary = PublicUser <$> arbitrary <*> arbitrary
+
 instance Arbitrary Goal where
   arbitrary =
     Goal
@@ -157,5 +163,7 @@ tests =
       testProperty "encodeDecode Habit Weekly" (encodeDecode :: Habit Weekly -> Property),
       testProperty "encodeDecode Intention Daily" (encodeDecode :: Intention Daily -> Property),
       testProperty "encodeDecode Intention Weekly" (encodeDecode :: Intention Weekly -> Property),
+      testProperty "encodeDecode ApiToken" (encodeDecode :: ApiToken -> Property),
+      testProperty "encodeDecode PublicUser" (encodeDecode :: PublicUser -> Property),
       testProperty "encodeDecode Goal" (encodeDecode :: Goal -> Property)
     ]

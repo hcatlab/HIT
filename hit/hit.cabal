@@ -10,6 +10,7 @@ build-type:    Simple
 library
   exposed-modules:
     HIT.Api
+    HIT.DB
     HIT.Habits
     HIT.Types
     HIT.Types.Deadline
@@ -20,13 +21,22 @@ library
     HIT.Types.Interval
     HIT.Types.Sort
     HIT.Types.State
+    HIT.Types.User
 
   build-depends:
     , aeson           >=2.0
     , base            >=4.14
+    , bcrypt          >=0.0
+    , beam-core       >=0.10
+    , beam-sqlite     >=0.5
     , bytestring      >=0.11
     , containers      >=0.6
+    , deriving-aeson  >=0.2
+    , http-types      >=0.12
+    , servant         >=0.19
+    , servant-auth    >=0.4
     , servant-server  >=0.19
+    , sqlite-simple   >=0.4
     , text            >=1.2
     , time            >=1.9
     , transformers    >=0.5
@@ -44,8 +54,15 @@ executable hit-server
   other-modules:
   build-depends:
     , base            >=4.14
+    , bcrypt          >=0.0
+    , bytestring      >=0.11
     , hit
+    , http-types      >=0.12
+    , servant         >=0.19
+    , servant-auth    >=0.4
     , servant-server  >=0.19
+    , sqlite-simple   >=0.4
+    , text            >=1.2
     , wai             >=3.2
     , wai-cors        >=0.2
     , warp            >=3.3
