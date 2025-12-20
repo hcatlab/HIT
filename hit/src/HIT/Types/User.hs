@@ -1,9 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -19,13 +18,12 @@ where
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
-import Deriving.Aeson (CustomJSON (..), UnwrapUnaryRecords)
 import GHC.Generics (Generic)
 import Prelude hiding (id)
 
 newtype ApiToken = ApiToken {unApiToken :: Text}
-  deriving (Show, Eq, Ord, Generic)
-  deriving (ToJSON, FromJSON) via (CustomJSON '[UnwrapUnaryRecords] ApiToken)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (ToJSON, FromJSON)
 
 data UserT f = User
   { id :: Columnar f Text,
@@ -57,7 +55,8 @@ data PublicUser = PublicUser
   { id :: Text,
     email :: Text
   }
-  deriving (Show, Eq, Generic, ToJSON, FromJSON)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (ToJSON, FromJSON)
 
 toPublicUser :: User -> PublicUser
 toPublicUser (User u e _ _) = PublicUser u e

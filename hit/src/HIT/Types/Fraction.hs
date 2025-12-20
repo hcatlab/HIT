@@ -3,7 +3,8 @@ module HIT.Types.Fraction
   )
 where
 
-import Data.Aeson (FromJSON (..), ToJSON (..))
+import Data.Aeson (FromJSON (..), ToJSON (..), Value (String))
+import Data.Text qualified as T
 import GHC.Generics (Generic)
 
 data Fraction = Fraction
@@ -13,15 +14,16 @@ data Fraction = Fraction
   deriving (Show, Eq, Generic)
 
 instance ToJSON Fraction where
-  toJSON (Fraction n d) = toJSON (show n ++ "/" ++ show d)
+  toJSON (Fraction n d) = String $ T.pack (show n ++ "/" ++ show d)
 
 instance FromJSON Fraction where
-  parseJSON v = do
-    s <- parseJSON v
-    let (numStr, denomStr) = break (== '/') s
+  parseJSON (String s) = do
+    let str = T.unpack s
+    let (numStr, denomStr) = break (== '/') str
     let n = read numStr :: Int
     case denomStr of
       '/' : rest -> do
         let d = read rest :: Int
         return $ Fraction n d
-      _ -> fail "Invalid Fraction"
+      _ -> fail "Invalid Fraction format"
+  parseJSON _ = fail "Fraction must be a string"

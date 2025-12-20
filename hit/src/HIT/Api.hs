@@ -1,5 +1,7 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -59,11 +61,8 @@ instance ToJSON LoginResponse
 
 instance FromJSON LoginResponse
 
-data HealthResponse = HealthResponse
+newtype HealthResponse = HealthResponse
   { status :: String
   }
-  deriving (Show, Eq, Generic)
-
-instance ToJSON HealthResponse
-
-instance FromJSON HealthResponse
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (ToJSON, FromJSON)
