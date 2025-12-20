@@ -132,6 +132,13 @@ instance Arbitrary (Intention Weekly) where
       <*> arbitrary
       <*> arbitrary
 
+instance Arbitrary Goal where
+  arbitrary =
+    Goal
+      <$> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+
 -- Test tree
 tests :: TestTree
 tests =
@@ -149,5 +156,6 @@ tests =
       testProperty "encodeDecode Habit Daily" (encodeDecode :: Habit Daily -> Property),
       testProperty "encodeDecode Habit Weekly" (encodeDecode :: Habit Weekly -> Property),
       testProperty "encodeDecode Intention Daily" (encodeDecode :: Intention Daily -> Property),
-      testProperty "encodeDecode Intention Weekly" (encodeDecode :: Intention Weekly -> Property)
+      testProperty "encodeDecode Intention Weekly" (encodeDecode :: Intention Weekly -> Property),
+      testProperty "encodeDecode Goal" (encodeDecode :: Goal -> Property)
     ]

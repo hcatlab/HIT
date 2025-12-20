@@ -3,6 +3,7 @@
 module HIT.Types
   ( module HIT.Types.Deadline,
     module HIT.Types.Fraction,
+    module HIT.Types.Goal,
     module HIT.Types.Habit,
     module HIT.Types.Intention,
     module HIT.Types.Interval,
@@ -13,6 +14,7 @@ where
 
 import HIT.Types.Deadline
 import HIT.Types.Fraction
+import HIT.Types.Goal
 import HIT.Types.Habit
 import HIT.Types.Intention
 import HIT.Types.Interval

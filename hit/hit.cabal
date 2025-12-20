@@ -14,6 +14,7 @@ library
     HIT.Types
     HIT.Types.Deadline
     HIT.Types.Fraction
+    HIT.Types.Goal
     HIT.Types.Habit
     HIT.Types.Intention
     HIT.Types.Interval
