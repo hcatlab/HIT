@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
@@ -15,12 +16,13 @@ where
 
 import Data.Aeson (FromJSON (..), ToJSON (..))
 import Data.Kind (Type)
+import Deriving.Aeson (CustomJSON (..), UnwrapUnaryRecords)
 import GHC.Generics (Generic)
 import HIT.Types.Interval (Interval (Daily, Weekly))
 
 newtype Hours = Hours {getHours :: [Int]}
   deriving stock (Show, Eq, Generic)
-  deriving anyclass (ToJSON, FromJSON)
+  deriving (ToJSON, FromJSON) via (CustomJSON '[UnwrapUnaryRecords] Hours)
 
 data Weekdays = Weekdays
   { monday :: Hours,
