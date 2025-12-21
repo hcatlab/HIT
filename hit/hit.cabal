@@ -12,16 +12,22 @@ library
     HIT.Api
     HIT.Api.Auth
     HIT.Api.Goals
+    HIT.Api.Habits
     HIT.Api.Health
+    HIT.Api.Intentions
     HIT.Api.Users
     HIT.Crud
     HIT.DB
     HIT.DB.Goals
+    HIT.DB.Habits
     HIT.DB.Init
+    HIT.DB.Intentions
     HIT.DB.Schema
     HIT.DB.Users
     HIT.Handlers
     HIT.Handlers.Goals
+    HIT.Handlers.Habits
+    HIT.Handlers.Intentions
     HIT.Handlers.Users
     HIT.Types
     HIT.Types.Deadline
@@ -33,6 +39,7 @@ library
     HIT.Types.Sort
     HIT.Types.State
     HIT.Types.User
+    HIT.Types.UUID
 
   build-depends:
     , aeson           >=2.0

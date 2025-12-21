@@ -14,7 +14,7 @@ import Data.Text.Encoding qualified as Text
 import Database.SQLite.Simple (Connection)
 import HIT.Api
 import HIT.DB (createUser, initDb, loginUser, lookupUserByToken, openDb)
-import HIT.Handlers (goalsServer, usersServer)
+import HIT.Handlers (goalsServer, habitsServer, intentionsServer, usersServer)
 import HIT.Types.User (ApiToken (..), User, UserT (..), toPublicUser)
 import Network.HTTP.Types.Header (hAuthorization)
 import Network.Wai (Request, requestHeaders)
@@ -42,7 +42,7 @@ app conn =
       (server conn)
 
 server :: Connection -> Server HITApi
-server conn = health :<|> signup :<|> login :<|> me :<|> goals :<|> users
+server conn = health :<|> signup :<|> login :<|> me :<|> goals :<|> users :<|> habits :<|> intentions
   where
     health = pure (HealthResponse "ok")
 
@@ -63,6 +63,10 @@ server conn = health :<|> signup :<|> login :<|> me :<|> goals :<|> users
     goals user = goalsServer conn user
 
     users user = usersServer conn user
+
+    habits user = habitsServer conn user
+
+    intentions user = intentionsServer conn user
 
 authHandler :: Connection -> AuthHandler Request User
 authHandler conn = mkAuthHandler $ \req -> do

@@ -3,8 +3,14 @@ module HIT.Types.Fraction
   )
 where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), Value (String))
+import Data.Aeson (FromJSON (..), ToJSON (..), Value (String), eitherDecode, encode)
+import Data.ByteString.Lazy qualified as LBS
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as Text
+import Database.Beam (FromBackendRow (..))
+import Database.Beam.Backend.SQL (HasSqlValueSyntax (..))
+import Database.Beam.Sqlite (Sqlite)
+import Database.Beam.Sqlite.Syntax (SqliteValueSyntax)
 import GHC.Generics (Generic)
 
 data Fraction = Fraction
@@ -27,3 +33,14 @@ instance FromJSON Fraction where
         return $ Fraction n d
       _ -> fail "Invalid Fraction format"
   parseJSON _ = fail "Fraction must be a string"
+
+-- Store Fraction as JSON-encoded TEXT in SQLite
+instance HasSqlValueSyntax SqliteValueSyntax Fraction where
+  sqlValueSyntax = sqlValueSyntax . Text.decodeUtf8 . LBS.toStrict . encode
+
+instance FromBackendRow Sqlite Fraction where
+  fromBackendRow = do
+    t <- fromBackendRow @Sqlite @T.Text
+    case eitherDecode (LBS.fromStrict (Text.encodeUtf8 t)) of
+      Right f -> pure f
+      Left _ -> fail "Invalid fraction"

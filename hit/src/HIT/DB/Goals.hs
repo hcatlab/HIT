@@ -19,6 +19,7 @@ import HIT.DB.Schema (HITDb (..), hitDb)
 import HIT.Types.Goal (Goal, GoalT (..))
 import HIT.Types.Goal qualified as Goal (GoalT (..))
 import HIT.Types.User (PrimaryKey (UserId))
+import HIT.Types.UUID ()
 
 createGoal :: Connection -> UUID.UUID -> Text -> Text -> Maybe Text -> IO Goal
 createGoal conn goalId uid gname gdesc = do

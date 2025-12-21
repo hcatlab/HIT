@@ -21,7 +21,7 @@ where
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
-import Deriving.Aeson (CustomJSON (..), UnwrapUnaryRecords)
+import Deriving.Aeson (CustomJSON (..), FromJSON (..), ToJSON (..), UnwrapUnaryRecords)
 import GHC.Generics (Generic)
 import Prelude hiding (id)
 

@@ -12,6 +12,16 @@ import Data.Aeson (FromJSON, ToJSON, eitherDecode, encode)
 import Data.ByteString.Lazy qualified as LBS
 import Data.ByteString.Lazy.UTF8 qualified as LBU
 import Data.Containers.ListUtils (nubInt)
+import HIT.Api.Habits
+  ( CreateHabitRequest (..),
+    HabitResponse (..),
+    UpdateHabitRequest (..),
+  )
+import HIT.Api.Intentions
+  ( CreateIntentionRequest (..),
+    IntentionResponse (..),
+    UpdateIntentionRequest (..),
+  )
 import HIT.Types
 import Test.QuickCheck
   ( Arbitrary (..),
@@ -94,43 +104,43 @@ instance Arbitrary Sort where
           then YesNo <$> arbitrary
           else Times <$> arbitrary
 
-instance Arbitrary (Habit Daily) where
-  arbitrary =
-    Habit
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
+-- Habits arbitrary instances for API payloads
+instance Arbitrary (CreateHabitRequest 'Daily) where
+  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
 
-instance Arbitrary (Habit Weekly) where
-  arbitrary =
-    Habit
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
+instance Arbitrary (CreateHabitRequest 'Weekly) where
+  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
 
-instance Arbitrary (Intention Daily) where
-  arbitrary =
-    Intention
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
+instance Arbitrary (UpdateHabitRequest 'Daily) where
+  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
 
-instance Arbitrary (Intention Weekly) where
-  arbitrary =
-    Intention
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
+instance Arbitrary (UpdateHabitRequest 'Weekly) where
+  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary (HabitResponse 'Daily) where
+  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary (HabitResponse 'Weekly) where
+  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+
+-- Intentions arbitrary instances for API payloads
+instance Arbitrary (CreateIntentionRequest 'Daily) where
+  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary (CreateIntentionRequest 'Weekly) where
+  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary (UpdateIntentionRequest 'Daily) where
+  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary (UpdateIntentionRequest 'Weekly) where
+  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary (IntentionResponse 'Daily) where
+  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary (IntentionResponse 'Weekly) where
+  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
 
 instance Arbitrary ApiToken where
   arbitrary = ApiToken <$> arbitrary
@@ -152,10 +162,20 @@ tests =
       testProperty "encodeDecode Deadline Daily" (encodeDecode :: Deadline Daily -> Property),
       testProperty "encodeDecode Deadline Weekly" (encodeDecode :: Deadline Weekly -> Property),
       testProperty "encodeDecode Sort" (encodeDecode :: Sort -> Property),
-      testProperty "encodeDecode Habit Daily" (encodeDecode :: Habit Daily -> Property),
-      testProperty "encodeDecode Habit Weekly" (encodeDecode :: Habit Weekly -> Property),
-      testProperty "encodeDecode Intention Daily" (encodeDecode :: Intention Daily -> Property),
-      testProperty "encodeDecode Intention Weekly" (encodeDecode :: Intention Weekly -> Property),
+      -- Habits: Daily/Weekly API payloads
+      testProperty "encodeDecode CreateHabitRequest Daily" (encodeDecode :: CreateHabitRequest 'Daily -> Property),
+      testProperty "encodeDecode CreateHabitRequest Weekly" (encodeDecode :: CreateHabitRequest 'Weekly -> Property),
+      testProperty "encodeDecode UpdateHabitRequest Daily" (encodeDecode :: UpdateHabitRequest 'Daily -> Property),
+      testProperty "encodeDecode UpdateHabitRequest Weekly" (encodeDecode :: UpdateHabitRequest 'Weekly -> Property),
+      testProperty "encodeDecode HabitResponse Daily" (encodeDecode :: HabitResponse 'Daily -> Property),
+      testProperty "encodeDecode HabitResponse Weekly" (encodeDecode :: HabitResponse 'Weekly -> Property),
+      -- Intentions: Daily/Weekly API payloads
+      testProperty "encodeDecode CreateIntentionRequest Daily" (encodeDecode :: CreateIntentionRequest 'Daily -> Property),
+      testProperty "encodeDecode CreateIntentionRequest Weekly" (encodeDecode :: CreateIntentionRequest 'Weekly -> Property),
+      testProperty "encodeDecode UpdateIntentionRequest Daily" (encodeDecode :: UpdateIntentionRequest 'Daily -> Property),
+      testProperty "encodeDecode UpdateIntentionRequest Weekly" (encodeDecode :: UpdateIntentionRequest 'Weekly -> Property),
+      testProperty "encodeDecode IntentionResponse Daily" (encodeDecode :: IntentionResponse 'Daily -> Property),
+      testProperty "encodeDecode IntentionResponse Weekly" (encodeDecode :: IntentionResponse 'Weekly -> Property),
       testProperty "encodeDecode ApiToken" (encodeDecode :: ApiToken -> Property),
       testProperty "encodeDecode PublicUser" (encodeDecode :: PublicUser -> Property)
     ]

@@ -11,11 +11,19 @@ module HIT.Types.Deadline
   ( Hours (..),
     Weekdays (..),
     Deadline (..),
+    DeadlineCodec (..),
   )
 where
 
-import Data.Aeson (FromJSON (..), ToJSON (..))
+import Data.Aeson (FromJSON (..), ToJSON (..), eitherDecode, encode)
+import Data.ByteString.Lazy qualified as LBS
 import Data.Kind (Type)
+import Data.Text (Text)
+import Data.Text.Encoding qualified as Text
+import Database.Beam (FromBackendRow (..))
+import Database.Beam.Backend.SQL (HasSqlValueSyntax (..))
+import Database.Beam.Sqlite (Sqlite)
+import Database.Beam.Sqlite.Syntax (SqliteValueSyntax)
 import Deriving.Aeson (CustomJSON (..), UnwrapUnaryRecords)
 import GHC.Generics (Generic)
 import HIT.Types.Interval (Interval (Daily, Weekly))
@@ -52,3 +60,29 @@ instance FromJSON (Deadline Daily) where
 
 instance FromJSON (Deadline Weekly) where
   parseJSON v = WeekHours <$> parseJSON v
+
+class DeadlineCodec (p :: Interval) where
+  encodeDeadline :: Deadline p -> Text
+  decodeDeadline :: Text -> Maybe (Deadline p)
+
+instance DeadlineCodec 'Daily where
+  encodeDeadline = Text.decodeUtf8 . LBS.toStrict . encode
+  decodeDeadline t = do
+    case eitherDecode (LBS.fromStrict (Text.encodeUtf8 t)) of
+      Right (hrs :: Hours) -> Just (DayHours hrs)
+      Left _ -> Nothing
+
+instance DeadlineCodec 'Weekly where
+  encodeDeadline = Text.decodeUtf8 . LBS.toStrict . encode
+  decodeDeadline t =
+    case eitherDecode (LBS.fromStrict (Text.encodeUtf8 t)) of
+      Right (wds :: Weekdays) -> Just (WeekHours wds)
+      Left _ -> Nothing
+
+instance (DeadlineCodec p) => HasSqlValueSyntax SqliteValueSyntax (Deadline p) where
+  sqlValueSyntax = sqlValueSyntax . encodeDeadline
+
+instance (DeadlineCodec p) => FromBackendRow Sqlite (Deadline p) where
+  fromBackendRow = do
+    t <- fromBackendRow @Sqlite @Text
+    maybe (fail "Invalid deadline") pure (decodeDeadline t)
