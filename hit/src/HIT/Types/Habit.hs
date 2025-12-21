@@ -33,6 +33,7 @@ data HabitT (p :: Interval) f = Habit
     user :: PrimaryKey UserT f,
     name :: Columnar f Text,
     description :: Columnar f (Maybe Text),
+    interval :: Columnar f Interval,
     sort :: Columnar f (PgJSON Sort),
     rate :: Columnar f (PgJSON Fraction),
     deadline :: Columnar f (Deadline p)
@@ -49,7 +50,7 @@ instance Beamable (HabitT p)
 
 instance (Typeable p) => Table (HabitT p) where
   data PrimaryKey (HabitT p) f = HabitId (Columnar f UUID) deriving (Generic)
-  primaryKey (Habit hid _ _ _ _ _ _) = HabitId hid
+  primaryKey (Habit hid _ _ _ _ _ _ _) = HabitId hid
 
 deriving instance Show (PrimaryKey (HabitT p) Identity)
 

@@ -14,15 +14,20 @@ import Data.ByteString.Lazy.UTF8 qualified as LBU
 import Data.Containers.ListUtils (nubInt)
 import HIT.Api.Habits
   ( CreateHabitRequest (..),
+    HabitDeadline (..),
     HabitResponse (..),
+    HabitView (..),
     UpdateHabitRequest (..),
   )
 import HIT.Api.Intentions
   ( CreateIntentionRequest (..),
+    IntentionDeadline (..),
     IntentionResponse (..),
+    IntentionView (..),
     UpdateIntentionRequest (..),
   )
 import HIT.Types
+import HIT.Types.Deadline (Deadline)
 import Test.QuickCheck
   ( Arbitrary (..),
     Gen,
@@ -105,42 +110,89 @@ instance Arbitrary Sort where
           else Times <$> arbitrary
 
 -- Habits arbitrary instances for API payloads
+instance Arbitrary HabitDeadline where
+  arbitrary = do
+    interval <- arbitrary :: Gen Interval
+    case interval of
+      Daily -> DailyDeadline <$> arbitrary
+      Weekly -> WeeklyDeadline <$> arbitrary
+
+-- Habit view (unified list)
+instance Arbitrary HabitView where
+  arbitrary = do
+    interval <- arbitrary :: Gen Interval
+    deadline <- case interval of
+      Daily -> DailyDeadline <$> arbitrary
+      Weekly -> WeeklyDeadline <$> arbitrary
+    HabitView
+      <$> arbitrary -- id
+      <*> pure interval
+      <*> arbitrary -- name
+      <*> arbitrary -- description
+      <*> arbitrary -- sort
+      <*> arbitrary -- rate
+      <*> pure deadline
+
+-- Habit CRUD payloads and responses (p-parameterized)
 instance Arbitrary (CreateHabitRequest 'Daily) where
-  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
 
 instance Arbitrary (CreateHabitRequest 'Weekly) where
-  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
 
 instance Arbitrary (UpdateHabitRequest 'Daily) where
-  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
 
 instance Arbitrary (UpdateHabitRequest 'Weekly) where
-  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
 
 instance Arbitrary (HabitResponse 'Daily) where
-  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
 
 instance Arbitrary (HabitResponse 'Weekly) where
-  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
 
 -- Intentions arbitrary instances for API payloads
+instance Arbitrary IntentionDeadline where
+  arbitrary = do
+    interval <- arbitrary :: Gen Interval
+    case interval of
+      Daily -> DailyIntentionDeadline <$> arbitrary
+      Weekly -> WeeklyIntentionDeadline <$> arbitrary
+
+-- Intention view (unified list)
+instance Arbitrary IntentionView where
+  arbitrary = do
+    interval <- arbitrary :: Gen Interval
+    deadline <- case interval of
+      Daily -> DailyIntentionDeadline <$> arbitrary
+      Weekly -> WeeklyIntentionDeadline <$> arbitrary
+    IntentionView
+      <$> arbitrary -- id
+      <*> pure interval
+      <*> arbitrary -- name
+      <*> arbitrary -- description
+      <*> arbitrary -- rate
+      <*> pure deadline
+
+-- Intention CRUD payloads and responses (p-parameterized)
 instance Arbitrary (CreateIntentionRequest 'Daily) where
-  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
 
 instance Arbitrary (CreateIntentionRequest 'Weekly) where
-  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
 
 instance Arbitrary (UpdateIntentionRequest 'Daily) where
-  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
 
 instance Arbitrary (UpdateIntentionRequest 'Weekly) where
-  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
 
 instance Arbitrary (IntentionResponse 'Daily) where
-  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
 
 instance Arbitrary (IntentionResponse 'Weekly) where
-  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
 
 instance Arbitrary ApiToken where
   arbitrary = ApiToken <$> arbitrary
@@ -162,14 +214,16 @@ tests =
       testProperty "encodeDecode Deadline Daily" (encodeDecode :: Deadline Daily -> Property),
       testProperty "encodeDecode Deadline Weekly" (encodeDecode :: Deadline Weekly -> Property),
       testProperty "encodeDecode Sort" (encodeDecode :: Sort -> Property),
-      -- Habits: Daily/Weekly API payloads
+      -- Habits unified list view and p-parameterized CRUD payloads
+      testProperty "encodeDecode HabitView" (encodeDecode :: HabitView -> Property),
       testProperty "encodeDecode CreateHabitRequest Daily" (encodeDecode :: CreateHabitRequest 'Daily -> Property),
       testProperty "encodeDecode CreateHabitRequest Weekly" (encodeDecode :: CreateHabitRequest 'Weekly -> Property),
       testProperty "encodeDecode UpdateHabitRequest Daily" (encodeDecode :: UpdateHabitRequest 'Daily -> Property),
       testProperty "encodeDecode UpdateHabitRequest Weekly" (encodeDecode :: UpdateHabitRequest 'Weekly -> Property),
       testProperty "encodeDecode HabitResponse Daily" (encodeDecode :: HabitResponse 'Daily -> Property),
       testProperty "encodeDecode HabitResponse Weekly" (encodeDecode :: HabitResponse 'Weekly -> Property),
-      -- Intentions: Daily/Weekly API payloads
+      -- Intentions unified list view and p-parameterized CRUD payloads
+      testProperty "encodeDecode IntentionView" (encodeDecode :: IntentionView -> Property),
       testProperty "encodeDecode CreateIntentionRequest Daily" (encodeDecode :: CreateIntentionRequest 'Daily -> Property),
       testProperty "encodeDecode CreateIntentionRequest Weekly" (encodeDecode :: CreateIntentionRequest 'Weekly -> Property),
       testProperty "encodeDecode UpdateIntentionRequest Daily" (encodeDecode :: UpdateIntentionRequest 'Daily -> Property),

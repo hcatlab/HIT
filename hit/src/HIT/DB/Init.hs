@@ -7,6 +7,9 @@ module HIT.DB.Init
 where
 
 import Data.ByteString.Char8 qualified as BS
+import Data.String (fromString)
+import Data.Text (Text)
+import Data.Text qualified as T
 import Database.PostgreSQL.Simple qualified as PG
 import System.Environment (lookupEnv)
 
@@ -27,38 +30,84 @@ initDb conn = do
   putStrLn "Initializing PostgreSQL database schema..."
 
   -- Enable UUID extension
-  PG.execute_
-    conn
-    "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\""
+  let createUuidExtensionSql :: Text
+      createUuidExtensionSql =
+        T.unlines
+          [ "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\""
+          ]
+  _ <- PG.execute_ conn (fromString (T.unpack createUuidExtensionSql))
+
+  -- Create enum type for interval values
+  let createIntervalEnumSql :: Text
+      createIntervalEnumSql =
+        T.unlines
+          [ "DO $$",
+            "BEGIN",
+            "  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'interval_kind') THEN",
+            "    CREATE TYPE interval_kind AS ENUM ('daily', 'weekly');",
+            "  END IF;",
+            "END;",
+            "$$;"
+          ]
+  _ <- PG.execute_ conn (fromString (T.unpack createIntervalEnumSql))
 
   -- Create users table
-  PG.execute_
-    conn
-    "CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, api_token TEXT UNIQUE NOT NULL)"
+  let createUsersSql :: Text
+      createUsersSql =
+        T.unlines
+          [ "CREATE TABLE IF NOT EXISTS users (",
+            "  id TEXT PRIMARY KEY,",
+            "  email TEXT UNIQUE NOT NULL,",
+            "  password_hash TEXT NOT NULL,",
+            "  api_token TEXT UNIQUE NOT NULL",
+            ")"
+          ]
+  _ <- PG.execute_ conn (fromString (T.unpack createUsersSql))
 
   -- Create goals table
-  PG.execute_
-    conn
-    "CREATE TABLE IF NOT EXISTS goals (id TEXT PRIMARY KEY, \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT)"
+  let createGoalsSql :: Text
+      createGoalsSql =
+        T.unlines
+          [ "CREATE TABLE IF NOT EXISTS goals (",
+            "  id TEXT PRIMARY KEY,",
+            "  \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,",
+            "  name TEXT NOT NULL,",
+            "  description TEXT",
+            ")"
+          ]
+  _ <- PG.execute_ conn (fromString (T.unpack createGoalsSql))
 
-  -- Create habits_daily table
-  PG.execute_
-    conn
-    "CREATE TABLE IF NOT EXISTS habits_daily (id TEXT PRIMARY KEY, \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, sort JSONB NOT NULL, rate JSONB NOT NULL, deadline TEXT NOT NULL)"
+  -- Create unified habits table
+  let createHabitsSql :: Text
+      createHabitsSql =
+        T.unlines
+          [ "CREATE TABLE IF NOT EXISTS habits (",
+            "  id TEXT PRIMARY KEY,",
+            "  \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,",
+            "  name TEXT NOT NULL,",
+            "  description TEXT,",
+            "  interval interval_kind NOT NULL,",
+            "  sort JSONB NOT NULL,",
+            "  rate JSONB NOT NULL,",
+            "  deadline TEXT NOT NULL",
+            ")"
+          ]
+  _ <- PG.execute_ conn (fromString (T.unpack createHabitsSql))
 
-  -- Create habits_weekly table
-  PG.execute_
-    conn
-    "CREATE TABLE IF NOT EXISTS habits_weekly (id TEXT PRIMARY KEY, \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, sort JSONB NOT NULL, rate JSONB NOT NULL, deadline TEXT NOT NULL)"
-
-  -- Create intentions_daily table
-  PG.execute_
-    conn
-    "CREATE TABLE IF NOT EXISTS intentions_daily (id TEXT PRIMARY KEY, \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, rate JSONB NOT NULL, deadline TEXT NOT NULL)"
-
-  -- Create intentions_weekly table
-  PG.execute_
-    conn
-    "CREATE TABLE IF NOT EXISTS intentions_weekly (id TEXT PRIMARY KEY, \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, rate JSONB NOT NULL, deadline TEXT NOT NULL)"
+  -- Create unified intentions table
+  let createIntentionsSql :: Text
+      createIntentionsSql =
+        T.unlines
+          [ "CREATE TABLE IF NOT EXISTS intentions (",
+            "  id TEXT PRIMARY KEY,",
+            "  \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,",
+            "  name TEXT NOT NULL,",
+            "  description TEXT,",
+            "  interval interval_kind NOT NULL,",
+            "  rate JSONB NOT NULL,",
+            "  deadline TEXT NOT NULL",
+            ")"
+          ]
+  _ <- PG.execute_ conn (fromString (T.unpack createIntentionsSql))
 
   putStrLn "Database schema initialized successfully"

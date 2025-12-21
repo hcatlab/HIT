@@ -67,48 +67,52 @@ hitDb =
                   (fieldNamed "description")
               ),
         habitsDaily =
-          setEntityName "habits_daily"
+          setEntityName "habits"
             <> modifyTableFields
               ( Habit
                   (fieldNamed "id")
                   (UserId (fieldNamed "user"))
                   (fieldNamed "name")
                   (fieldNamed "description")
+                  (fieldNamed "interval")
                   (fieldNamed "sort")
                   (fieldNamed "rate")
                   (fieldNamed "deadline")
               ),
         habitsWeekly =
-          setEntityName "habits_weekly"
+          setEntityName "habits"
             <> modifyTableFields
               ( Habit
                   (fieldNamed "id")
                   (UserId (fieldNamed "user"))
                   (fieldNamed "name")
                   (fieldNamed "description")
+                  (fieldNamed "interval")
                   (fieldNamed "sort")
                   (fieldNamed "rate")
                   (fieldNamed "deadline")
               ),
         intentionsDaily =
-          setEntityName "intentions_daily"
+          setEntityName "intentions"
             <> modifyTableFields
               ( Intention
                   (fieldNamed "id")
                   (UserId (fieldNamed "user"))
                   (fieldNamed "name")
                   (fieldNamed "description")
+                  (fieldNamed "interval")
                   (fieldNamed "rate")
                   (fieldNamed "deadline")
               ),
         intentionsWeekly =
-          setEntityName "intentions_weekly"
+          setEntityName "intentions"
             <> modifyTableFields
               ( Intention
                   (fieldNamed "id")
                   (UserId (fieldNamed "user"))
                   (fieldNamed "name")
                   (fieldNamed "description")
+                  (fieldNamed "interval")
                   (fieldNamed "rate")
                   (fieldNamed "deadline")
               )

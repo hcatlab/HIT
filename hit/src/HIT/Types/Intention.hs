@@ -32,6 +32,7 @@ data IntentionT (p :: Interval) f = Intention
     user :: PrimaryKey UserT f,
     name :: Columnar f Text,
     description :: Columnar f (Maybe Text),
+    interval :: Columnar f Interval,
     rate :: Columnar f (PgJSON Fraction),
     deadline :: Columnar f (Deadline p)
   }
@@ -47,7 +48,7 @@ instance Beamable (IntentionT p)
 
 instance (Typeable p) => Table (IntentionT p) where
   data PrimaryKey (IntentionT p) f = IntentionId (Columnar f UUID) deriving (Generic)
-  primaryKey (Intention iid _ _ _ _ _) = IntentionId iid
+  primaryKey (Intention iid _ _ _ _ _ _) = IntentionId iid
 
 deriving instance Show (PrimaryKey (IntentionT p) Identity)
 

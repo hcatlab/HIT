@@ -23,57 +23,62 @@ import HIT.Types.Deadline (Deadline, DeadlineCodec)
 import HIT.Types.Fraction (Fraction)
 import HIT.Types.Intention (Intention, IntentionT (..))
 import HIT.Types.Intention qualified as Intention (IntentionT (..))
+import HIT.Types.Interval (IntervalTag (..))
 import HIT.Types.User (PrimaryKey (UserId))
 
-createIntention :: forall p. (IntentionTableSelector p, DeadlineCodec p) => Connection -> UUID.UUID -> Text -> Text -> Maybe Text -> Fraction -> Deadline p -> IO (Intention p)
+createIntention :: forall p. (IntentionTableSelector p, DeadlineCodec p, IntervalTag p) => Connection -> UUID.UUID -> Text -> Text -> Maybe Text -> Fraction -> Deadline p -> IO (Intention p)
 createIntention conn intentionId uid iname idesc irate ideadline = do
-  let i = Intention intentionId (UserId uid) iname idesc (PgJSON irate) ideadline
+  let i = Intention intentionId (UserId uid) iname idesc (intervalVal (Proxy @p)) (PgJSON irate) ideadline
   runBeamPostgres conn $
     runInsert $
       insert (intentionTable @p hitDb) $
         insertValues [i]
   pure i
 
-getIntention :: forall p. (IntentionTableSelector p, DeadlineCodec p) => Connection -> Text -> UUID.UUID -> IO (Maybe (Intention p))
+getIntention :: forall p. (IntentionTableSelector p, DeadlineCodec p, IntervalTag p) => Connection -> Text -> UUID.UUID -> IO (Maybe (Intention p))
 getIntention conn uid intentionId =
   runBeamPostgres conn $
     runSelectReturningOne $
       select $ do
         i <- all_ (intentionTable @p hitDb)
-        guard_ (Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid))
+        guard_ (Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
         pure i
 
-listIntentions :: forall p. (IntentionTableSelector p, DeadlineCodec p) => Connection -> Text -> IO [Intention p]
+listIntentions :: forall p. (IntentionTableSelector p, DeadlineCodec p, IntervalTag p) => Connection -> Text -> IO [Intention p]
 listIntentions conn uid =
   runBeamPostgres conn $
     runSelectReturningList $
       select $ do
         i <- all_ (intentionTable @p hitDb)
-        guard_ (Intention.user i ==. UserId (val_ uid))
+        guard_ (Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
         pure i
 
-updateIntention :: forall p. (IntentionTableSelector p, DeadlineCodec p) => Connection -> Text -> UUID.UUID -> Text -> Maybe Text -> Fraction -> Deadline p -> IO (Maybe (Intention p))
+updateIntention :: forall p. (IntentionTableSelector p, DeadlineCodec p, IntervalTag p) => Connection -> Text -> UUID.UUID -> Text -> Maybe Text -> Fraction -> Deadline p -> IO (Maybe (Intention p))
 updateIntention conn uid intentionId iname idesc irate ideadline = do
   mExisting <- getIntention @p conn uid intentionId
   case mExisting of
     Nothing -> pure Nothing
     Just _ -> do
-      runBeamPostgres conn $
-        runUpdate $
-          update
-            (intentionTable @p hitDb)
-            ( \i ->
-                mconcat
-                  [ Intention.name i <-. val_ iname,
-                    Intention.description i <-. val_ idesc,
-                    Intention.rate i <-. val_ (PgJSON irate),
-                    Intention.deadline i <-. val_ ideadline
-                  ]
+      runBeamPostgres
+        conn
+        ( runUpdate
+            ( update
+                (intentionTable @p hitDb)
+                ( \i ->
+                    mconcat
+                      [ Intention.name i <-. val_ iname,
+                        Intention.description i <-. val_ idesc,
+                        Intention.interval i <-. val_ (intervalVal (Proxy @p)),
+                        Intention.rate i <-. val_ (PgJSON irate),
+                        Intention.deadline i <-. val_ ideadline
+                      ]
+                )
+                (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
             )
-            (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid))
-      pure (Just (Intention intentionId (UserId uid) iname idesc (PgJSON irate) ideadline))
+        )
+      pure (Just (Intention intentionId (UserId uid) iname idesc (intervalVal (Proxy @p)) (PgJSON irate) ideadline))
 
-deleteIntention :: forall p. (IntentionTableSelector p, DeadlineCodec p) => Proxy p -> Connection -> Text -> UUID.UUID -> IO Bool
+deleteIntention :: forall p. (IntentionTableSelector p, DeadlineCodec p, IntervalTag p) => Proxy p -> Connection -> Text -> UUID.UUID -> IO Bool
 deleteIntention _ conn uid intentionId = do
   mExisting <- getIntention @p conn uid intentionId
   case mExisting of
@@ -81,5 +86,5 @@ deleteIntention _ conn uid intentionId = do
     Just _ -> do
       runBeamPostgres conn $
         runDelete $
-          delete (intentionTable @p hitDb) (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid))
+          delete (intentionTable @p hitDb) (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
       pure True

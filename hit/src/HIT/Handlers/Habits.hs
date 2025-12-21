@@ -10,27 +10,54 @@ module HIT.Handlers.Habits
   )
 where
 
-import Data.Proxy (Proxy (..))
+import Control.Monad.IO.Class (liftIO)
+import Data.String (fromString)
+import Data.Text (Text)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam (Identity)
 import Database.Beam.Postgres (PgJSON (..))
 import Database.PostgreSQL.Simple (Connection)
-import HIT.Api.Habits (CreateHabitRequest (..), HabitApiFor, HabitResponse (..), HabitsApi, UpdateHabitRequest (..))
-import HIT.Crud (CrudApiFor, CrudResource (..), crudServerTc)
+import HIT.Api.Habits
+  ( CreateHabitRequest (..),
+    HabitApiFor,
+    HabitDeadline (..),
+    HabitResponse (..),
+    HabitView (..),
+    HabitsApi,
+    UpdateHabitRequest (..),
+  )
+import HIT.Crud (CrudResource (..), crudServerTc)
 import HIT.DB (createHabit, deleteHabit, getHabit, listHabits, updateHabit)
 import HIT.DB.Schema (HabitTableSelector)
 import HIT.Types.Deadline (DeadlineCodec)
 import HIT.Types.Habit qualified as Habit (HabitT (..))
-import HIT.Types.Interval (Interval (Daily, Weekly))
+import HIT.Types.Interval (Interval (Daily, Weekly), IntervalTag)
 import HIT.Types.User (User)
 import HIT.Types.User qualified as User (UserT (..))
 import Servant
 import Prelude hiding (id, read)
 
+habitsServer :: Connection -> User -> Server HabitsApi
+habitsServer conn user =
+  listHabitsHandler conn user
+    :<|> crudServerTc (HabitsResource @'Daily conn) user
+    :<|> crudServerTc (HabitsResource @'Weekly conn) user
+
+listHabitsHandler :: Connection -> User -> Maybe Interval -> Handler [HabitView]
+listHabitsHandler conn user mInterval = do
+  let uid = User.id user
+  case mInterval of
+    Just Daily -> liftIO $ map toHabitViewDaily <$> listHabits @'Daily conn uid
+    Just Weekly -> liftIO $ map toHabitViewWeekly <$> listHabits @'Weekly conn uid
+    Nothing -> do
+      daily <- liftIO $ map toHabitViewDaily <$> listHabits @'Daily conn uid
+      weekly <- liftIO $ map toHabitViewWeekly <$> listHabits @'Weekly conn uid
+      pure (daily <> weekly)
+
 newtype HabitsResource (p :: Interval) = HabitsResource Connection
 
-instance (HabitTableSelector p, DeadlineCodec p) => CrudResource (HabitsResource p) where
+instance (HabitTableSelector p, IntervalTag p, DeadlineCodec p) => CrudResource (HabitsResource p) where
   type Label (HabitsResource p) = "habitId"
   type InternalId (HabitsResource p) = UUID.UUID
   type CreateReq (HabitsResource p) = CreateHabitRequest p
@@ -55,11 +82,14 @@ instance (HabitTableSelector p, DeadlineCodec p) => CrudResource (HabitsResource
   delete (HabitsResource conn) u hid =
     deleteHabit @p Proxy conn (User.id u) hid
 
-habitsServer :: Connection -> User -> Server HabitsApi
-habitsServer conn user =
-  crudServerTc (HabitsResource @'Daily conn) user
-    :<|> crudServerTc (HabitsResource @'Weekly conn) user
+toHabitViewDaily :: Habit.HabitT 'Daily Identity -> HabitView
+toHabitViewDaily (Habit.Habit hid _ hname hdesc _ (PgJSON hsort) (PgJSON hrate) hdeadline) =
+  HabitView (UUID.toText hid) Daily hname hdesc hsort hrate (DailyDeadline hdeadline)
+
+toHabitViewWeekly :: Habit.HabitT 'Weekly Identity -> HabitView
+toHabitViewWeekly (Habit.Habit hid _ hname hdesc _ (PgJSON hsort) (PgJSON hrate) hdeadline) =
+  HabitView (UUID.toText hid) Weekly hname hdesc hsort hrate (WeeklyDeadline hdeadline)
 
 toHabitResponse :: Habit.HabitT p Identity -> HabitResponse p
-toHabitResponse (Habit.Habit hid _ hname hdesc (PgJSON hsort) (PgJSON hrate) hdeadline) =
+toHabitResponse (Habit.Habit hid _ hname hdesc _ (PgJSON hsort) (PgJSON hrate) hdeadline) =
   HabitResponse (UUID.toText hid) hname hdesc hsort hrate hdeadline

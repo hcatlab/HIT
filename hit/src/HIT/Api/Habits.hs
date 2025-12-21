@@ -4,11 +4,13 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
 module HIT.Api.Habits where
 
-import Data.Aeson (FromJSON, ToJSON)
+import Control.Applicative ((<|>))
+import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.:?), (.=))
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import HIT.Types.Deadline (Deadline)
@@ -17,10 +19,11 @@ import HIT.Types.Interval (Interval (Daily, Weekly))
 import HIT.Types.Sort (Sort)
 import Servant
 
--- Habits API and payloads
+-- Habits API: unified list + p-parameterized CRUD subroutes
 
 type HabitsApi =
-  "daily" :> HabitApiFor 'Daily
+  QueryParam "interval" Interval :> Get '[JSON] [HabitView]
+    :<|> "daily" :> HabitApiFor 'Daily
     :<|> "weekly" :> HabitApiFor 'Weekly
 
 type HabitApiFor (p :: Interval) =
@@ -30,6 +33,7 @@ type HabitApiFor (p :: Interval) =
     :<|> Capture "habitId" Text :> ReqBody '[JSON] (UpdateHabitRequest p) :> Put '[JSON] (HabitResponse p)
     :<|> Capture "habitId" Text :> Delete '[JSON] NoContent
 
+-- p-parameterized payloads for CRUD
 data CreateHabitRequest (p :: Interval) = CreateHabitRequest
   { name :: Text,
     description :: Maybe Text,
@@ -75,3 +79,57 @@ instance ToJSON (HabitResponse p)
 instance FromJSON (HabitResponse 'Daily)
 
 instance FromJSON (HabitResponse 'Weekly)
+
+-- Unified list view that includes interval and deadline as a sum
+data HabitDeadline
+  = DailyDeadline (Deadline 'Daily)
+  | WeeklyDeadline (Deadline 'Weekly)
+  deriving (Show, Eq, Generic)
+
+data HabitView = HabitView
+  { id :: Text,
+    interval :: Interval,
+    name :: Text,
+    description :: Maybe Text,
+    sort :: Sort,
+    rate :: Fraction,
+    deadline :: HabitDeadline
+  }
+  deriving (Show, Eq, Generic)
+
+instance ToJSON HabitDeadline where
+  toJSON (DailyDeadline d) = toJSON d
+  toJSON (WeeklyDeadline d) = toJSON d
+
+instance FromJSON HabitDeadline where
+  parseJSON v = (DailyDeadline <$> parseJSON v) <|> (WeeklyDeadline <$> parseJSON v)
+
+instance ToJSON HabitView where
+  toJSON (HabitView hid hint name desc sort rate deadlineVal) =
+    let baseFields =
+          [ "id" .= hid,
+            "interval" .= hint,
+            "name" .= name,
+            "description" .= desc,
+            "sort" .= sort,
+            "rate" .= rate
+          ]
+        deadlineField = case (hint, deadlineVal) of
+          (Daily, DailyDeadline d) -> ["deadline" .= d]
+          (Weekly, WeeklyDeadline d) -> ["deadline" .= d]
+          (_, other) -> ["deadline" .= toJSON other]
+     in object (baseFields <> deadlineField)
+
+instance FromJSON HabitView where
+  parseJSON =
+    withObject "HabitView" $ \o -> do
+      hid <- o .: "id"
+      hint <- o .: "interval"
+      name <- o .: "name"
+      desc <- o .:? "description"
+      sort <- o .: "sort"
+      rate <- o .: "rate"
+      deadlineVal <- case hint of
+        Daily -> DailyDeadline <$> o .: "deadline"
+        Weekly -> WeeklyDeadline <$> o .: "deadline"
+      pure (HabitView hid hint name desc sort rate deadlineVal)
