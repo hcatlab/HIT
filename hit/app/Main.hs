@@ -20,6 +20,7 @@ import Network.HTTP.Types.Header (hAuthorization)
 import Network.Wai (Request, requestHeaders)
 import Network.Wai.Handler.Warp (run)
 import Network.Wai.Middleware.Cors (simpleCors)
+import Network.Wai.Middleware.RequestLogger (logStdout)
 import Servant
 import Servant.Server.Experimental.Auth (AuthHandler, AuthServerData, mkAuthHandler)
 
@@ -35,11 +36,12 @@ type instance AuthServerData (AuthProtect "api-token") = User
 
 app :: Connection -> Application
 app conn =
-  simpleCors $
-    serveWithContext
-      (Proxy :: Proxy HITApi)
-      (authHandler conn :. EmptyContext)
-      (server conn)
+  logStdout $
+    simpleCors $
+      serveWithContext
+        (Proxy :: Proxy HITApi)
+        (authHandler conn :. EmptyContext)
+        (server conn)
 
 server :: Connection -> Server HITApi
 server conn = health :<|> signup :<|> login :<|> me :<|> goals :<|> users :<|> habits :<|> intentions
