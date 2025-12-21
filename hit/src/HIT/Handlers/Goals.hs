@@ -9,6 +9,7 @@ module HIT.Handlers.Goals
   )
 where
 
+import Data.UUID (UUID)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam (Identity)
@@ -26,7 +27,7 @@ newtype GoalsResource = GoalsResource Connection
 
 instance CrudResource GoalsResource where
   type Label GoalsResource = "goalId"
-  type InternalId GoalsResource = UUID.UUID
+  type InternalId GoalsResource = UUID
   type CreateReq GoalsResource = CreateGoalRequest
   type UpdateReq GoalsResource = UpdateGoalRequest
   type Resp GoalsResource = GoalResponse

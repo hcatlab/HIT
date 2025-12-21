@@ -12,6 +12,8 @@ import Data.Aeson (FromJSON, ToJSON, eitherDecode, encode)
 import Data.ByteString.Lazy qualified as LBS
 import Data.ByteString.Lazy.UTF8 qualified as LBU
 import Data.Containers.ListUtils (nubInt)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Text (Text)
 import HIT.Api.Habits
   ( CreateHabitRequest (..),
     HabitDeadline (..),
@@ -68,6 +70,12 @@ instance Arbitrary (LBS Fraction) where
     y <- arbitrary `suchThat` (/= 0) :: Gen Int
     return . LBS . LBU.fromString $ ['"'] ++ show x ++ "/" ++ show y ++ ['"']
 
+nonEmptyTextGen :: Gen (NonEmpty Text)
+nonEmptyTextGen = do
+  x <- arbitrary
+  xs <- arbitrary
+  pure (x :| xs)
+
 instance Arbitrary Interval where
   arbitrary = elements [Daily, Weekly]
 
@@ -123,6 +131,7 @@ instance Arbitrary HabitView where
     deadline <- case interval of
       Daily -> DailyDeadline <$> arbitrary
       Weekly -> WeeklyDeadline <$> arbitrary
+    goals <- arbitrary :: Gen [Text]
     HabitView
       <$> arbitrary -- id
       <*> pure interval
@@ -131,25 +140,26 @@ instance Arbitrary HabitView where
       <*> arbitrary -- sort
       <*> arbitrary -- rate
       <*> pure deadline
+      <*> pure goals
 
 -- Habit CRUD payloads and responses (p-parameterized)
 instance Arbitrary (CreateHabitRequest 'Daily) where
-  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
+  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> nonEmptyTextGen
 
 instance Arbitrary (CreateHabitRequest 'Weekly) where
-  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
+  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> nonEmptyTextGen
 
 instance Arbitrary (UpdateHabitRequest 'Daily) where
-  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
+  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> nonEmptyTextGen
 
 instance Arbitrary (UpdateHabitRequest 'Weekly) where
-  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
+  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> nonEmptyTextGen
 
 instance Arbitrary (HabitResponse 'Daily) where
-  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
+  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> (arbitrary :: Gen [Text])
 
 instance Arbitrary (HabitResponse 'Weekly) where
-  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
+  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> (arbitrary :: Gen [Text])
 
 -- Intentions arbitrary instances for API payloads
 instance Arbitrary IntentionDeadline where
@@ -166,6 +176,7 @@ instance Arbitrary IntentionView where
     deadline <- case interval of
       Daily -> DailyIntentionDeadline <$> arbitrary
       Weekly -> WeeklyIntentionDeadline <$> arbitrary
+    goals <- arbitrary :: Gen [Text]
     IntentionView
       <$> arbitrary -- id
       <*> pure interval
@@ -173,25 +184,26 @@ instance Arbitrary IntentionView where
       <*> arbitrary -- description
       <*> arbitrary -- rate
       <*> pure deadline
+      <*> pure goals
 
 -- Intention CRUD payloads and responses (p-parameterized)
 instance Arbitrary (CreateIntentionRequest 'Daily) where
-  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
+  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> nonEmptyTextGen
 
 instance Arbitrary (CreateIntentionRequest 'Weekly) where
-  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
+  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> nonEmptyTextGen
 
 instance Arbitrary (UpdateIntentionRequest 'Daily) where
-  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
+  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> nonEmptyTextGen
 
 instance Arbitrary (UpdateIntentionRequest 'Weekly) where
-  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
+  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> nonEmptyTextGen
 
 instance Arbitrary (IntentionResponse 'Daily) where
-  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily))
+  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> (arbitrary :: Gen [Text])
 
 instance Arbitrary (IntentionResponse 'Weekly) where
-  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly))
+  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> (arbitrary :: Gen [Text])
 
 instance Arbitrary ApiToken where
   arbitrary = ApiToken <$> arbitrary

@@ -9,7 +9,8 @@
 module HIT.Api.Habits where
 
 import Control.Applicative ((<|>))
-import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.:?), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.!=), (.:), (.:?), (.=))
+import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import HIT.Types.Deadline (Deadline)
@@ -38,7 +39,8 @@ data CreateHabitRequest (p :: Interval) = CreateHabitRequest
     description :: Maybe Text,
     sort :: Sort,
     rate :: Fraction,
-    deadline :: Deadline p
+    deadline :: Deadline p,
+    goalIds :: NonEmpty Text
   }
   deriving (Show, Eq, Generic)
 
@@ -53,7 +55,8 @@ data UpdateHabitRequest (p :: Interval) = UpdateHabitRequest
     description :: Maybe Text,
     sort :: Sort,
     rate :: Fraction,
-    deadline :: Deadline p
+    deadline :: Deadline p,
+    goalIds :: NonEmpty Text
   }
   deriving (Show, Eq, Generic)
 
@@ -69,7 +72,8 @@ data HabitResponse (p :: Interval) = HabitResponse
     description :: Maybe Text,
     sort :: Sort,
     rate :: Fraction,
-    deadline :: Deadline p
+    deadline :: Deadline p,
+    goalIds :: [Text]
   }
   deriving (Show, Eq, Generic)
 
@@ -92,7 +96,8 @@ data HabitView = HabitView
     description :: Maybe Text,
     sort :: Sort,
     rate :: Fraction,
-    deadline :: HabitDeadline
+    deadline :: HabitDeadline,
+    goalIds :: [Text]
   }
   deriving (Show, Eq, Generic)
 
@@ -104,7 +109,7 @@ instance FromJSON HabitDeadline where
   parseJSON v = (DailyDeadline <$> parseJSON v) <|> (WeeklyDeadline <$> parseJSON v)
 
 instance ToJSON HabitView where
-  toJSON (HabitView hid hint name desc sort rate deadlineVal) =
+  toJSON (HabitView hid hint name desc sort rate deadlineVal goalIds) =
     let baseFields =
           [ "id" .= hid,
             "interval" .= hint,
@@ -117,7 +122,8 @@ instance ToJSON HabitView where
           (Daily, DailyDeadline d) -> ["deadline" .= d]
           (Weekly, WeeklyDeadline d) -> ["deadline" .= d]
           (_, other) -> ["deadline" .= toJSON other]
-     in object (baseFields <> deadlineField)
+        goalsField = ["goalIds" .= goalIds]
+     in object (baseFields <> deadlineField <> goalsField)
 
 instance FromJSON HabitView where
   parseJSON =
@@ -131,4 +137,5 @@ instance FromJSON HabitView where
       deadlineVal <- case hint of
         Daily -> DailyDeadline <$> o .: "deadline"
         Weekly -> WeeklyDeadline <$> o .: "deadline"
-      pure (HabitView hid hint name desc sort rate deadlineVal)
+      goalIds <- o .:? "goalIds" .!= []
+      pure (HabitView hid hint name desc sort rate deadlineVal goalIds)

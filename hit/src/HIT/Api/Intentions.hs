@@ -9,7 +9,8 @@
 module HIT.Api.Intentions where
 
 import Control.Applicative ((<|>))
-import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.:?), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.!=), (.:), (.:?), (.=))
+import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import HIT.Types.Deadline (Deadline)
@@ -36,7 +37,8 @@ data CreateIntentionRequest (p :: Interval) = CreateIntentionRequest
   { name :: Text,
     description :: Maybe Text,
     rate :: Fraction,
-    deadline :: Deadline p
+    deadline :: Deadline p,
+    goalIds :: NonEmpty Text
   }
   deriving (Show, Eq, Generic)
 
@@ -50,7 +52,8 @@ data UpdateIntentionRequest (p :: Interval) = UpdateIntentionRequest
   { name :: Text,
     description :: Maybe Text,
     rate :: Fraction,
-    deadline :: Deadline p
+    deadline :: Deadline p,
+    goalIds :: NonEmpty Text
   }
   deriving (Show, Eq, Generic)
 
@@ -65,7 +68,8 @@ data IntentionResponse (p :: Interval) = IntentionResponse
     name :: Text,
     description :: Maybe Text,
     rate :: Fraction,
-    deadline :: Deadline p
+    deadline :: Deadline p,
+    goalIds :: [Text]
   }
   deriving (Show, Eq, Generic)
 
@@ -87,7 +91,8 @@ data IntentionView = IntentionView
     name :: Text,
     description :: Maybe Text,
     rate :: Fraction,
-    deadline :: IntentionDeadline
+    deadline :: IntentionDeadline,
+    goalIds :: [Text]
   }
   deriving (Show, Eq, Generic)
 
@@ -99,7 +104,7 @@ instance FromJSON IntentionDeadline where
   parseJSON v = (DailyIntentionDeadline <$> parseJSON v) <|> (WeeklyIntentionDeadline <$> parseJSON v)
 
 instance ToJSON IntentionView where
-  toJSON (IntentionView iid hint name desc rate deadlineVal) =
+  toJSON (IntentionView iid hint name desc rate deadlineVal goalIds) =
     let baseFields =
           [ "id" .= iid,
             "interval" .= hint,
@@ -111,7 +116,8 @@ instance ToJSON IntentionView where
           (Daily, DailyIntentionDeadline d) -> ["deadline" .= d]
           (Weekly, WeeklyIntentionDeadline d) -> ["deadline" .= d]
           (_, other) -> ["deadline" .= toJSON other]
-     in object (baseFields <> deadlineField)
+        goalsField = ["goalIds" .= goalIds]
+     in object (baseFields <> deadlineField <> goalsField)
 
 instance FromJSON IntentionView where
   parseJSON =
@@ -124,4 +130,5 @@ instance FromJSON IntentionView where
       deadlineVal <- case hint of
         Daily -> DailyIntentionDeadline <$> o .: "deadline"
         Weekly -> WeeklyIntentionDeadline <$> o .: "deadline"
-      pure (IntentionView iid hint name desc rate deadlineVal)
+      goalIds <- o .:? "goalIds" .!= []
+      pure (IntentionView iid hint name desc rate deadlineVal goalIds)

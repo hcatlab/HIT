@@ -10,7 +10,7 @@ module HIT.DB.Goals
 where
 
 import Data.Text (Text)
-import Data.UUID qualified as UUID
+import Data.UUID (UUID)
 import Database.Beam
 import Database.Beam.Postgres (runBeamPostgres)
 import Database.PostgreSQL.Simple (Connection)
@@ -19,7 +19,7 @@ import HIT.Types.Goal (Goal, GoalT (..))
 import HIT.Types.Goal qualified as Goal (GoalT (..))
 import HIT.Types.User (PrimaryKey (UserId))
 
-createGoal :: Connection -> UUID.UUID -> Text -> Text -> Maybe Text -> IO Goal
+createGoal :: Connection -> UUID -> Text -> Text -> Maybe Text -> IO Goal
 createGoal conn goalId uid gname gdesc = do
   let g = Goal goalId (UserId uid) gname gdesc
   runBeamPostgres conn $
@@ -28,7 +28,7 @@ createGoal conn goalId uid gname gdesc = do
         insertValues [g]
   pure g
 
-getGoal :: Connection -> Text -> UUID.UUID -> IO (Maybe Goal)
+getGoal :: Connection -> Text -> UUID -> IO (Maybe Goal)
 getGoal conn uid goalId =
   runBeamPostgres conn $
     runSelectReturningOne $
@@ -46,7 +46,7 @@ listGoals conn uid =
         guard_ (Goal.user g ==. UserId (val_ uid))
         pure g
 
-updateGoal :: Connection -> Text -> UUID.UUID -> Text -> Maybe Text -> IO (Maybe Goal)
+updateGoal :: Connection -> Text -> UUID -> Text -> Maybe Text -> IO (Maybe Goal)
 updateGoal conn uid goalId gname gdesc = do
   mExisting <- getGoal conn uid goalId
   case mExisting of
@@ -60,7 +60,7 @@ updateGoal conn uid goalId gname gdesc = do
             (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
       pure (Just (Goal goalId (UserId uid) gname gdesc))
 
-deleteGoal :: Connection -> Text -> UUID.UUID -> IO Bool
+deleteGoal :: Connection -> Text -> UUID -> IO Bool
 deleteGoal conn uid goalId = do
   mExisting <- getGoal conn uid goalId
   case mExisting of
