@@ -1,9 +1,7 @@
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -13,11 +11,9 @@ module HIT.Types.Goal
   )
 where
 
-import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import Data.UUID (UUID)
-import Data.UUID qualified as UUID
-import Database.Beam (Beamable, Columnar, HasSqlEqualityCheck, Identity, PrimaryKey, Table (..))
+import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
 import GHC.Generics (Generic)
 import HIT.Types.User (UserT)
 import Prelude hiding (id)

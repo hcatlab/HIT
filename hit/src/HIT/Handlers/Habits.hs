@@ -1,8 +1,6 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 
 module HIT.Handlers.Habits
   ( habitsServer,
@@ -11,8 +9,6 @@ module HIT.Handlers.Habits
 where
 
 import Control.Monad.IO.Class (liftIO)
-import Data.String (fromString)
-import Data.Text (Text)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam (Identity)
@@ -20,7 +16,6 @@ import Database.Beam.Postgres (PgJSON (..))
 import Database.PostgreSQL.Simple (Connection)
 import HIT.Api.Habits
   ( CreateHabitRequest (..),
-    HabitApiFor,
     HabitDeadline (..),
     HabitResponse (..),
     HabitView (..),
@@ -79,8 +74,8 @@ instance (HabitTableSelector p, IntervalTag p, DeadlineCodec p) => CrudResource 
   update (HabitsResource conn) u hid (UpdateHabitRequest hname hdesc hsort hrate hdeadline) =
     fmap toHabitResponse <$> updateHabit @p conn (User.id u) hid hname hdesc hsort hrate hdeadline
 
-  delete (HabitsResource conn) u hid =
-    deleteHabit @p Proxy conn (User.id u) hid
+  delete (HabitsResource conn) u =
+    deleteHabit @p Proxy conn (User.id u)
 
 toHabitViewDaily :: Habit.HabitT 'Daily Identity -> HabitView
 toHabitViewDaily (Habit.Habit hid _ hname hdesc _ (PgJSON hsort) (PgJSON hrate) hdeadline) =

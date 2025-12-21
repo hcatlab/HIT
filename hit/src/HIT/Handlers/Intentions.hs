@@ -1,8 +1,6 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 
 module HIT.Handlers.Intentions
   ( intentionsServer,
@@ -18,7 +16,6 @@ import Database.Beam.Postgres (PgJSON (..))
 import Database.PostgreSQL.Simple (Connection)
 import HIT.Api.Intentions
   ( CreateIntentionRequest (..),
-    IntentionApiFor,
     IntentionDeadline (..),
     IntentionResponse (..),
     IntentionView (..),
@@ -77,8 +74,8 @@ instance (IntentionTableSelector p, IntervalTag p, DeadlineCodec p) => CrudResou
   update (IntentionsResource conn) u iid (UpdateIntentionRequest iname idesc irate ideadline) =
     fmap toIntentionResponse <$> updateIntention @p conn (User.id u) iid iname idesc irate ideadline
 
-  delete (IntentionsResource conn) u iid =
-    deleteIntention @p Proxy conn (User.id u) iid
+  delete (IntentionsResource conn) u =
+    deleteIntention @p Proxy conn (User.id u)
 
 toIntentionViewDaily :: Intention.IntentionT 'Daily Identity -> IntentionView
 toIntentionViewDaily (Intention.Intention iid _ iname idesc _ (PgJSON irate) ideadline) =

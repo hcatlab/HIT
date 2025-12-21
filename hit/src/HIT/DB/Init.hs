@@ -7,6 +7,7 @@ module HIT.DB.Init
 where
 
 import Data.ByteString.Char8 qualified as BS
+import Data.Maybe (fromMaybe)
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -18,10 +19,8 @@ import System.Environment (lookupEnv)
 openDb :: IO PG.Connection
 openDb = do
   mDatabaseUrl <- lookupEnv "DATABASE_URL"
-  let connStr = case mDatabaseUrl of
-        Just url -> url
-        Nothing -> "host=localhost port=5432 dbname=hit user=postgres password=postgres"
-  putStrLn $ "Connecting to PostgreSQL database..."
+  let connStr = fromMaybe "host=localhost port=5432 dbname=hit user=postgres password=postgres" mDatabaseUrl
+  putStrLn "Connecting to PostgreSQL database..."
   PG.connectPostgreSQL (BS.pack connStr)
 
 -- | Initialize PostgreSQL database schema

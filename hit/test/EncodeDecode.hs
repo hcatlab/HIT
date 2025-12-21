@@ -27,7 +27,6 @@ import HIT.Api.Intentions
     UpdateIntentionRequest (..),
   )
 import HIT.Types
-import HIT.Types.Deadline (Deadline)
 import Test.QuickCheck
   ( Arbitrary (..),
     Gen,
