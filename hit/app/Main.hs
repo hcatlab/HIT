@@ -15,6 +15,7 @@ import Database.PostgreSQL.Simple (Connection)
 import HIT.Api
 import HIT.DB (createUser, initDb, loginUser, lookupUserByToken, openDb)
 import HIT.Handlers (goalsServer, habitsServer, intentionsServer, usersServer)
+import HIT.OpenApi (hitSwagger)
 import HIT.Types.User (ApiToken (..), User, UserT (..), toPublicUser)
 import Network.HTTP.Types.Header (hAuthorization)
 import Network.Wai (Request, requestHeaders)
@@ -39,13 +40,15 @@ app conn =
   logStdout $
     simpleCors $
       serveWithContext
-        (Proxy :: Proxy HITApi)
+        (Proxy :: Proxy HITApiWithSwagger)
         (authHandler conn :. EmptyContext)
         (server conn)
 
-server :: Connection -> Server HITApi
-server conn = health :<|> signup :<|> login :<|> me :<|> goals :<|> users :<|> habits :<|> intentions
+server :: Connection -> Server HITApiWithSwagger
+server conn = hitApi :<|> pure hitSwagger
   where
+    hitApi = health :<|> signup :<|> login :<|> me :<|> goals :<|> users :<|> habits :<|> intentions
+
     health = pure (HealthResponse "ok")
 
     signup (SignupRequest uid em pw) = do

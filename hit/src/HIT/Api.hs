@@ -4,6 +4,7 @@
 
 module HIT.Api
   ( HITApi,
+    HITApiWithSwagger,
     module HIT.Api.Auth,
     module HIT.Api.Goals,
     module HIT.Api.Health,
@@ -13,6 +14,7 @@ module HIT.Api
   )
 where
 
+import Data.Swagger (Swagger)
 import HIT.Api.Auth
 import HIT.Api.Goals
 import HIT.Api.Habits
@@ -32,3 +34,6 @@ type HITApi =
     :<|> AuthProtect "api-token" :> "users" :> UsersApi
     :<|> AuthProtect "api-token" :> "habits" :> HabitsApi
     :<|> AuthProtect "api-token" :> "intentions" :> IntentionsApi
+
+-- | API with Swagger endpoint included
+type HITApiWithSwagger = HITApi :<|> "swagger.json" :> Get '[JSON] Swagger
