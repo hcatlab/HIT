@@ -1,0 +1,12 @@
+dist-newstyle/
+.git/
+.github/
+*.md
+hit-web/node_modules/
+hit-web/elm-stuff/
+hit/dist-newstyle/
+hit-cli/dist-newstyle/
+.DS_Store
+*.swp
+*.swo
+*~
