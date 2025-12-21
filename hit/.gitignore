@@ -53,6 +53,3 @@ cabal-dev
 # OS
 .DS_Store
 Thumbs.db
-
-# sqlite database files
-*.sqlite

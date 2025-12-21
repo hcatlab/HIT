@@ -138,13 +138,6 @@ instance Arbitrary ApiToken where
 instance Arbitrary PublicUser where
   arbitrary = PublicUser <$> arbitrary <*> arbitrary
 
-instance Arbitrary Goal where
-  arbitrary =
-    Goal
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-
 -- Test tree
 tests :: TestTree
 tests =
@@ -164,6 +157,5 @@ tests =
       testProperty "encodeDecode Intention Daily" (encodeDecode :: Intention Daily -> Property),
       testProperty "encodeDecode Intention Weekly" (encodeDecode :: Intention Weekly -> Property),
       testProperty "encodeDecode ApiToken" (encodeDecode :: ApiToken -> Property),
-      testProperty "encodeDecode PublicUser" (encodeDecode :: PublicUser -> Property),
-      testProperty "encodeDecode Goal" (encodeDecode :: Goal -> Property)
+      testProperty "encodeDecode PublicUser" (encodeDecode :: PublicUser -> Property)
     ]

@@ -4,6 +4,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -13,6 +14,7 @@ module HIT.Types.User
     PublicUser (..),
     toPublicUser,
     ApiToken (..),
+    PrimaryKey (UserId),
   )
 where
 
@@ -44,8 +46,8 @@ deriving instance Eq User
 instance Beamable UserT
 
 instance Table UserT where
-  data PrimaryKey UserT f = UserIdPk (Columnar f Text) deriving (Generic)
-  primaryKey (User i _ _ _) = UserIdPk i
+  data PrimaryKey UserT f = UserId (Columnar f Text) deriving (Generic)
+  primaryKey (User i _ _ _) = UserId i
 
 deriving instance Show (PrimaryKey UserT Identity)
 

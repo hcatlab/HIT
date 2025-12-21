@@ -2,3 +2,6 @@
 dist/
 dist-newstyle/
 cabal.project.local
+
+# sqlite database files
+*.sqlite

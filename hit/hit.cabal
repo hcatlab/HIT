@@ -10,8 +10,19 @@ build-type:    Simple
 library
   exposed-modules:
     HIT.Api
+    HIT.Api.Auth
+    HIT.Api.Goals
+    HIT.Api.Health
+    HIT.Api.Users
+    HIT.Crud
     HIT.DB
-    HIT.Habits
+    HIT.DB.Goals
+    HIT.DB.Init
+    HIT.DB.Schema
+    HIT.DB.Users
+    HIT.Handlers
+    HIT.Handlers.Goals
+    HIT.Handlers.Users
     HIT.Types
     HIT.Types.Deadline
     HIT.Types.Fraction
