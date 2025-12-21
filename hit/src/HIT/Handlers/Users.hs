@@ -10,7 +10,7 @@ module HIT.Handlers.Users
 where
 
 import Data.Text (Text)
-import Database.SQLite.Simple (Connection)
+import Database.PostgreSQL.Simple (Connection)
 import HIT.Api.Users (CreateUserRequest (..), UpdateUserRequest (..), UserResponse (..))
 import HIT.Api.Users qualified as ApiUsers (UserResponse (..))
 import HIT.Crud (CrudApiFor, CrudResource (..), crudServerTc)

@@ -22,9 +22,9 @@ import Data.Text.Encoding qualified as Text
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam
-import Database.Beam.Sqlite (runBeamSqlite)
-import Database.SQLite.Simple (Connection)
-import Database.SQLite.Simple qualified as Sqlite
+import Database.Beam.Postgres (runBeamPostgres)
+import Database.PostgreSQL.Simple (Connection)
+import Database.PostgreSQL.Simple qualified as PG
 import HIT.DB.Schema (HITDb (..), hitDb)
 import HIT.Types.User (ApiToken (..), User, UserT (..))
 import HIT.Types.User qualified as User (UserT (..))
@@ -32,7 +32,7 @@ import HIT.Types.User qualified as User (UserT (..))
 seedUser :: Connection -> User -> IO ()
 seedUser conn u@(User uid uemail _ utoken) = do
   mExisting <-
-    runBeamSqlite conn $
+    runBeamPostgres conn $
       runSelectReturningOne $
         select $ do
           row <- all_ (users hitDb)
@@ -49,7 +49,7 @@ seedUser conn u@(User uid uemail _ utoken) = do
   case mExisting of
     Just _ -> pure ()
     Nothing ->
-      runBeamSqlite conn $
+      runBeamPostgres conn $
         runInsert $
           insert (users hitDb) $
             insertValues [u]
@@ -60,14 +60,15 @@ createUser conn username_ email_ password_ = do
   pwHash <- hashPasswordText password_
   let u = User username_ email_ pwHash tok
   ( Right <$> do
-      runBeamSqlite conn $
+      runBeamPostgres conn $
         runInsert $
           insert (users hitDb) $
             insertValues [u]
       pure u
     )
-    `catch` \(e :: Sqlite.SQLError) ->
-      if Sqlite.sqlError e == Sqlite.ErrorConstraint
+    `catch` \(e :: PG.SqlError) ->
+      -- Check for unique constraint violation (SQLSTATE 23505)
+      if PG.sqlState e == "23505"
         then pure (Left "username or email already exists")
         else pure (Left (Text.decodeUtf8 (BS8.pack (show e))))
 
@@ -85,7 +86,7 @@ loginUser conn uname password_ = do
         then pure Nothing
         else do
           tok <- newToken
-          runBeamSqlite conn $
+          runBeamPostgres conn $
             runUpdate $
               update
                 (users hitDb)
@@ -95,7 +96,7 @@ loginUser conn uname password_ = do
 
 lookupUserByToken :: Connection -> ApiToken -> IO (Maybe User)
 lookupUserByToken conn (ApiToken tok) =
-  runBeamSqlite conn $
+  runBeamPostgres conn $
     runSelectReturningOne $
       select $ do
         u <- all_ (users hitDb)
@@ -106,7 +107,7 @@ lookupUserByToken conn (ApiToken tok) =
 
 listAllUsers :: Connection -> IO [User]
 listAllUsers conn =
-  runBeamSqlite conn $
+  runBeamPostgres conn $
     runSelectReturningList $
       select (all_ (users hitDb))
 
@@ -119,7 +120,7 @@ updateUserEmail conn uid newEmail = do
   case mExisting of
     Nothing -> pure Nothing
     Just (User _ _ pwHash tok) -> do
-      runBeamSqlite conn $
+      runBeamPostgres conn $
         runUpdate $
           update
             (users hitDb)
@@ -133,7 +134,7 @@ deleteUserById conn uid = do
   case mExisting of
     Nothing -> pure False
     Just _ -> do
-      runBeamSqlite conn $
+      runBeamPostgres conn $
         runDelete $
           delete (users hitDb) (\u -> User.id u ==. val_ uid)
       pure True
@@ -142,7 +143,7 @@ deleteUserById conn uid = do
 
 lookupUserById :: Connection -> Text -> IO (Maybe User)
 lookupUserById conn uid =
-  runBeamSqlite conn $
+  runBeamPostgres conn $
     runSelectReturningOne $
       select $ do
         u <- all_ (users hitDb)

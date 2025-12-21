@@ -14,22 +14,16 @@ module HIT.Types.Habit
   )
 where
 
-import Data.Aeson (eitherDecode, encode)
-import Data.ByteString.Lazy qualified as LBS
 import Data.Text (Text)
-import Data.Text.Encoding qualified as Text
 import Data.Typeable (Typeable)
 import Data.UUID (UUID)
-import Database.Beam (Beamable, Columnar, FromBackendRow (..), Identity, PrimaryKey, Table (..))
-import Database.Beam.Backend.SQL (HasSqlValueSyntax (..))
-import Database.Beam.Sqlite (Sqlite)
-import Database.Beam.Sqlite.Syntax (SqliteValueSyntax)
+import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
+import Database.Beam.Postgres (PgJSON (..))
 import GHC.Generics (Generic)
 import HIT.Types.Deadline (Deadline)
 import HIT.Types.Fraction (Fraction)
 import HIT.Types.Interval (Interval)
 import HIT.Types.Sort (Sort)
-import HIT.Types.UUID ()
 import HIT.Types.User (UserT)
 import Prelude hiding (id)
 
@@ -39,8 +33,8 @@ data HabitT (p :: Interval) f = Habit
     user :: PrimaryKey UserT f,
     name :: Columnar f Text,
     description :: Columnar f (Maybe Text),
-    sort :: Columnar f Sort,
-    rate :: Columnar f Fraction,
+    sort :: Columnar f (PgJSON Sort),
+    rate :: Columnar f (PgJSON Fraction),
     deadline :: Columnar f (Deadline p)
   }
   deriving (Generic)
@@ -63,13 +57,4 @@ deriving instance Eq (PrimaryKey (HabitT p) Identity)
 
 instance Beamable (PrimaryKey (HabitT p))
 
--- Store Sort, Fraction, and Deadline p as TEXT via JSON encoding
-instance HasSqlValueSyntax SqliteValueSyntax Sort where
-  sqlValueSyntax = sqlValueSyntax . Text.decodeUtf8 . LBS.toStrict . encode
-
-instance FromBackendRow Sqlite Sort where
-  fromBackendRow = do
-    t <- fromBackendRow @Sqlite @Text
-    case eitherDecode (LBS.fromStrict (Text.encodeUtf8 t)) of
-      Right s -> pure s
-      Left _ -> fail "Invalid sort"
+-- Store Fraction and Deadline p as TEXT via JSON encoding

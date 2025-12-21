@@ -12,7 +12,7 @@ where
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam (Identity)
-import Database.SQLite.Simple (Connection)
+import Database.PostgreSQL.Simple (Connection)
 import HIT.Api.Goals (CreateGoalRequest (..), GoalResponse (..), UpdateGoalRequest (..))
 import HIT.Crud (CrudApiFor, CrudResource (..), crudServerTc)
 import HIT.DB (createGoal, deleteGoal, getGoal, listGoals, updateGoal)

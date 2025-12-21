@@ -11,7 +11,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
-import Database.SQLite.Simple (Connection)
+import Database.PostgreSQL.Simple (Connection)
 import HIT.Api
 import HIT.DB (createUser, initDb, loginUser, lookupUserByToken, openDb)
 import HIT.Handlers (goalsServer, habitsServer, intentionsServer, usersServer)
@@ -27,7 +27,7 @@ import Servant.Server.Experimental.Auth (AuthHandler, AuthServerData, mkAuthHand
 main :: IO ()
 main = do
   putStrLn "Starting HIT server on port 8080..."
-  conn <- openDb "hit.sqlite"
+  conn <- openDb
   initDb conn
 
   run 8080 (app conn)

@@ -22,8 +22,8 @@ import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Database.Beam (FromBackendRow (..))
 import Database.Beam.Backend.SQL (HasSqlValueSyntax (..))
-import Database.Beam.Sqlite (Sqlite)
-import Database.Beam.Sqlite.Syntax (SqliteValueSyntax)
+import Database.Beam.Postgres (Postgres)
+import Database.Beam.Postgres.Syntax (PgValueSyntax)
 import Deriving.Aeson (CustomJSON (..), UnwrapUnaryRecords)
 import GHC.Generics (Generic)
 import HIT.Types.Interval (Interval (Daily, Weekly))
@@ -79,10 +79,11 @@ instance DeadlineCodec 'Weekly where
       Right (wds :: Weekdays) -> Just (WeekHours wds)
       Left _ -> Nothing
 
-instance (DeadlineCodec p) => HasSqlValueSyntax SqliteValueSyntax (Deadline p) where
+-- Store Deadline as JSONB in PostgreSQL for better querying
+instance (DeadlineCodec p) => HasSqlValueSyntax PgValueSyntax (Deadline p) where
   sqlValueSyntax = sqlValueSyntax . encodeDeadline
 
-instance (DeadlineCodec p) => FromBackendRow Sqlite (Deadline p) where
+instance (DeadlineCodec p) => FromBackendRow Postgres (Deadline p) where
   fromBackendRow = do
-    t <- fromBackendRow @Sqlite @Text
+    t <- fromBackendRow @Postgres @Text
     maybe (fail "Invalid deadline") pure (decodeDeadline t)

@@ -17,12 +17,12 @@ where
 import Data.Text (Text)
 import Data.Typeable (Typeable)
 import Data.UUID (UUID)
-import Database.Beam (Beamable, Columnar, FromBackendRow (..), Identity, PrimaryKey, Table (..))
+import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
+import Database.Beam.Postgres (PgJSON (..))
 import GHC.Generics (Generic)
 import HIT.Types.Deadline (Deadline)
 import HIT.Types.Fraction (Fraction)
-import HIT.Types.Interval (Interval)
-import HIT.Types.UUID ()
+import HIT.Types.Interval (Interval (..))
 import HIT.Types.User (UserT)
 import Prelude hiding (id)
 
@@ -32,7 +32,7 @@ data IntentionT (p :: Interval) f = Intention
     user :: PrimaryKey UserT f,
     name :: Columnar f Text,
     description :: Columnar f (Maybe Text),
-    rate :: Columnar f Fraction,
+    rate :: Columnar f (PgJSON Fraction),
     deadline :: Columnar f (Deadline p)
   }
   deriving (Generic)

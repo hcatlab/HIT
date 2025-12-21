@@ -12,12 +12,12 @@ module HIT.DB.Habits
   )
 where
 
-import Data.Text (Text)
 import Data.Proxy (Proxy (..))
+import Data.Text (Text)
 import Data.UUID qualified as UUID
 import Database.Beam
-import Database.Beam.Sqlite (runBeamSqlite)
-import Database.SQLite.Simple (Connection)
+import Database.Beam.Postgres (PgJSON (..), runBeamPostgres)
+import Database.PostgreSQL.Simple (Connection)
 import HIT.DB.Schema (HabitTableSelector (..), hitDb)
 import HIT.Types.Deadline (Deadline, DeadlineCodec)
 import HIT.Types.Fraction (Fraction)
@@ -28,8 +28,8 @@ import HIT.Types.User (PrimaryKey (UserId))
 
 createHabit :: forall p. (HabitTableSelector p, DeadlineCodec p) => Connection -> UUID.UUID -> Text -> Text -> Maybe Text -> Sort -> Fraction -> Deadline p -> IO (Habit p)
 createHabit conn habitId uid hname hdesc hsort hrate hdeadline = do
-  let h = Habit habitId (UserId uid) hname hdesc hsort hrate hdeadline
-  runBeamSqlite conn $
+  let h = Habit habitId (UserId uid) hname hdesc (PgJSON hsort) (PgJSON hrate) hdeadline
+  runBeamPostgres conn $
     runInsert $
       insert (habitTable @p hitDb) $
         insertValues [h]
@@ -37,7 +37,7 @@ createHabit conn habitId uid hname hdesc hsort hrate hdeadline = do
 
 getHabit :: forall p. (HabitTableSelector p, DeadlineCodec p) => Connection -> Text -> UUID.UUID -> IO (Maybe (Habit p))
 getHabit conn uid habitId =
-  runBeamSqlite conn $
+  runBeamPostgres conn $
     runSelectReturningOne $
       select $ do
         h <- all_ (habitTable @p hitDb)
@@ -46,7 +46,7 @@ getHabit conn uid habitId =
 
 listHabits :: forall p. (HabitTableSelector p, DeadlineCodec p) => Connection -> Text -> IO [Habit p]
 listHabits conn uid =
-  runBeamSqlite conn $
+  runBeamPostgres conn $
     runSelectReturningList $
       select $ do
         h <- all_ (habitTable @p hitDb)
@@ -59,20 +59,21 @@ updateHabit conn uid habitId hname hdesc hsort hrate hdeadline = do
   case mExisting of
     Nothing -> pure Nothing
     Just _ -> do
-      runBeamSqlite conn $
+      runBeamPostgres conn $
         runUpdate $
           update
             (habitTable @p hitDb)
-            (\h ->
-               mconcat
-                 [ Habit.name h <-. val_ hname,
-                   Habit.description h <-. val_ hdesc,
-                   Habit.sort h <-. val_ hsort,
-                   Habit.rate h <-. val_ hrate,
-                   Habit.deadline h <-. val_ hdeadline
-                 ])
+            ( \h ->
+                mconcat
+                  [ Habit.name h <-. val_ hname,
+                    Habit.description h <-. val_ hdesc,
+                    Habit.sort h <-. val_ (PgJSON hsort),
+                    Habit.rate h <-. val_ (PgJSON hrate),
+                    Habit.deadline h <-. val_ hdeadline
+                  ]
+            )
             (\h -> Habit.id h ==. val_ habitId &&. Habit.user h ==. UserId (val_ uid))
-      pure (Just (Habit habitId (UserId uid) hname hdesc hsort hrate hdeadline))
+      pure (Just (Habit habitId (UserId uid) hname hdesc (PgJSON hsort) (PgJSON hrate) hdeadline))
 
 deleteHabit :: forall p. (HabitTableSelector p, DeadlineCodec p) => Proxy p -> Connection -> Text -> UUID.UUID -> IO Bool
 deleteHabit _ conn uid habitId = do
@@ -80,7 +81,7 @@ deleteHabit _ conn uid habitId = do
   case mExisting of
     Nothing -> pure False
     Just _ -> do
-      runBeamSqlite conn $
+      runBeamPostgres conn $
         runDelete $
           delete (habitTable @p hitDb) (\h -> Habit.id h ==. val_ habitId &&. Habit.user h ==. UserId (val_ uid))
       pure True

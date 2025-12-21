@@ -19,7 +19,6 @@ import Data.UUID (UUID)
 import Data.UUID qualified as UUID
 import Database.Beam (Beamable, Columnar, HasSqlEqualityCheck, Identity, PrimaryKey, Table (..))
 import GHC.Generics (Generic)
-import HIT.Types.UUID ()
 import HIT.Types.User (UserT)
 import Prelude hiding (id)
 

@@ -13,18 +13,17 @@ where
 import Data.Text (Text)
 import Data.UUID qualified as UUID
 import Database.Beam
-import Database.Beam.Sqlite (runBeamSqlite)
-import Database.SQLite.Simple (Connection)
+import Database.Beam.Postgres (runBeamPostgres)
+import Database.PostgreSQL.Simple (Connection)
 import HIT.DB.Schema (HITDb (..), hitDb)
 import HIT.Types.Goal (Goal, GoalT (..))
 import HIT.Types.Goal qualified as Goal (GoalT (..))
 import HIT.Types.User (PrimaryKey (UserId))
-import HIT.Types.UUID ()
 
 createGoal :: Connection -> UUID.UUID -> Text -> Text -> Maybe Text -> IO Goal
 createGoal conn goalId uid gname gdesc = do
   let g = Goal goalId (UserId uid) gname gdesc
-  runBeamSqlite conn $
+  runBeamPostgres conn $
     runInsert $
       insert (goals hitDb) $
         insertValues [g]
@@ -32,7 +31,7 @@ createGoal conn goalId uid gname gdesc = do
 
 getGoal :: Connection -> Text -> UUID.UUID -> IO (Maybe Goal)
 getGoal conn uid goalId =
-  runBeamSqlite conn $
+  runBeamPostgres conn $
     runSelectReturningOne $
       select $ do
         g <- all_ (goals hitDb)
@@ -41,7 +40,7 @@ getGoal conn uid goalId =
 
 listGoals :: Connection -> Text -> IO [Goal]
 listGoals conn uid =
-  runBeamSqlite conn $
+  runBeamPostgres conn $
     runSelectReturningList $
       select $ do
         g <- all_ (goals hitDb)
@@ -54,7 +53,7 @@ updateGoal conn uid goalId gname gdesc = do
   case mExisting of
     Nothing -> pure Nothing
     Just _ -> do
-      runBeamSqlite conn $
+      runBeamPostgres conn $
         runUpdate $
           update
             (goals hitDb)
@@ -68,7 +67,7 @@ deleteGoal conn uid goalId = do
   case mExisting of
     Nothing -> pure False
     Just _ -> do
-      runBeamSqlite conn $
+      runBeamPostgres conn $
         runDelete $
           delete (goals hitDb) (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
       pure True

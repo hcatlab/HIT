@@ -10,11 +10,12 @@ module HIT.Handlers.Habits
   )
 where
 
+import Data.Proxy (Proxy (..))
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam (Identity)
-import Database.SQLite.Simple (Connection)
-import Data.Proxy (Proxy (..))
+import Database.Beam.Postgres (PgJSON (..))
+import Database.PostgreSQL.Simple (Connection)
 import HIT.Api.Habits (CreateHabitRequest (..), HabitApiFor, HabitResponse (..), HabitsApi, UpdateHabitRequest (..))
 import HIT.Crud (CrudApiFor, CrudResource (..), crudServerTc)
 import HIT.DB (createHabit, deleteHabit, getHabit, listHabits, updateHabit)
@@ -60,5 +61,5 @@ habitsServer conn user =
     :<|> crudServerTc (HabitsResource @'Weekly conn) user
 
 toHabitResponse :: Habit.HabitT p Identity -> HabitResponse p
-toHabitResponse (Habit.Habit hid _ hname hdesc hsort hrate hdeadline) =
+toHabitResponse (Habit.Habit hid _ hname hdesc (PgJSON hsort) (PgJSON hrate) hdeadline) =
   HabitResponse (UUID.toText hid) hname hdesc hsort hrate hdeadline

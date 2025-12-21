@@ -7,6 +7,7 @@
 module HIT.DB.Schema where
 
 import Database.Beam
+import Database.Beam.Postgres (Postgres)
 import HIT.Types.Goal (GoalT (..))
 import HIT.Types.Habit (HabitT (..))
 import HIT.Types.Intention (IntentionT (..))
@@ -23,7 +24,7 @@ data HITDb f = HITDb
   }
   deriving (Generic)
 
-instance Database be HITDb
+instance Database Postgres HITDb
 
 class HabitTableSelector (p :: Interval) where
   habitTable :: HITDb f -> f (TableEntity (HabitT p))
@@ -43,10 +44,10 @@ instance IntentionTableSelector 'Daily where
 instance IntentionTableSelector 'Weekly where
   intentionTable = intentionsWeekly
 
-hitDb :: DatabaseSettings be HITDb
+hitDb :: DatabaseSettings Postgres HITDb
 hitDb =
   defaultDbSettings
-    `withDbModification` dbModification
+    `withDbModification` HITDb
       { users =
           setEntityName "users"
             <> modifyTableFields

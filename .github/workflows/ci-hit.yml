@@ -35,6 +35,11 @@ jobs:
           cabal-version: ${{ matrix.cabal }}
           cabal-update: true
 
+      - name: Install PostgreSQL client libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev
+
       - name: Configure the build
         run: |
           cabal configure --enable-tests --enable-benchmarks --disable-documentation

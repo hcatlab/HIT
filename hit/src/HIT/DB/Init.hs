@@ -1,156 +1,64 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
-module HIT.DB.Init where
+module HIT.DB.Init
+  ( openDb,
+    initDb,
+  )
+where
 
-import Control.Exception (catch)
-import Data.Text (Text)
-import Database.SQLite.Simple (Connection)
-import Database.SQLite.Simple qualified as Sqlite
+import Data.ByteString.Char8 qualified as BS
+import Database.PostgreSQL.Simple qualified as PG
+import System.Environment (lookupEnv)
 
-openDb :: FilePath -> IO Connection
-openDb = Sqlite.open
+-- | Open a PostgreSQL database connection
+-- Uses DATABASE_URL env var, defaults to local connection
+openDb :: IO PG.Connection
+openDb = do
+  mDatabaseUrl <- lookupEnv "DATABASE_URL"
+  let connStr = case mDatabaseUrl of
+        Just url -> url
+        Nothing -> "host=localhost port=5432 dbname=hit user=postgres password=postgres"
+  putStrLn $ "Connecting to PostgreSQL database..."
+  PG.connectPostgreSQL (BS.pack connStr)
 
-initDb :: Connection -> IO ()
+-- | Initialize PostgreSQL database schema
+initDb :: PG.Connection -> IO ()
 initDb conn = do
-  let expectedUsers = ["id", "email", "password_hash", "api_token"]
-  let expectedGoals = ["id", "user", "name", "description"]
-  let expectedHabitCols = ["id", "user", "name", "description", "sort", "rate", "deadline"]
-  let expectedIntentionCols = ["id", "user", "name", "description", "rate", "deadline"]
+  putStrLn "Initializing PostgreSQL database schema..."
 
-  let getExistingCols :: IO [Text]
-      getExistingCols =
-        ( do
-            rows <- Sqlite.query_ conn "PRAGMA table_info(users)" :: IO [(Int, Text, Text, Int, Maybe Text, Int)]
-            pure (map (\(_, name_, _, _, _, _) -> name_) rows)
-        )
-          `catch` (\(_ :: Sqlite.SQLError) -> pure [])
-
-  existing <- getExistingCols
-  case existing of
-    [] -> pure ()
-    cols | cols == expectedUsers -> pure ()
-    _ -> Sqlite.execute_ conn "DROP TABLE IF EXISTS users"
-
-  Sqlite.execute_
+  -- Enable UUID extension
+  PG.execute_
     conn
-    "CREATE TABLE IF NOT EXISTS users \
-    \(id TEXT PRIMARY KEY, \
-    \email TEXT UNIQUE NOT NULL, \
-    \password_hash TEXT NOT NULL, \
-    \api_token TEXT UNIQUE NOT NULL)"
+    "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\""
 
-  Sqlite.execute_
+  -- Create users table
+  PG.execute_
     conn
-    "CREATE TABLE IF NOT EXISTS goals \
-    \(id TEXT PRIMARY KEY, \
-    \user TEXT NOT NULL, \
-    \name TEXT NOT NULL, \
-    \description TEXT, \
-    \FOREIGN KEY (user) REFERENCES users(id))"
+    "CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, api_token TEXT UNIQUE NOT NULL)"
 
-  -- habits (daily)
-  let getExistingHabitsDaily :: IO [Text]
-      getExistingHabitsDaily =
-        ( do
-            rows <- Sqlite.query_ conn "PRAGMA table_info(habits_daily)" :: IO [(Int, Text, Text, Int, Maybe Text, Int)]
-            pure (map (\(_, name_, _, _, _, _) -> name_) rows)
-        )
-          `catch` (\(_ :: Sqlite.SQLError) -> pure [])
-
-  existingHabitsDaily <- getExistingHabitsDaily
-  case existingHabitsDaily of
-    [] -> pure ()
-    cols | cols == expectedHabitCols -> pure ()
-    _ -> Sqlite.execute_ conn "DROP TABLE IF EXISTS habits_daily"
-
-  Sqlite.execute_
+  -- Create goals table
+  PG.execute_
     conn
-    "CREATE TABLE IF NOT EXISTS habits_daily \
-    \(id TEXT PRIMARY KEY, \
-    \user TEXT NOT NULL, \
-    \name TEXT NOT NULL, \
-    \description TEXT, \
-    \sort TEXT NOT NULL, \
-    \rate TEXT NOT NULL, \
-    \deadline TEXT NOT NULL, \
-    \FOREIGN KEY (user) REFERENCES users(id))"
+    "CREATE TABLE IF NOT EXISTS goals (id TEXT PRIMARY KEY, \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT)"
 
-  -- habits (weekly)
-  let getExistingHabitsWeekly :: IO [Text]
-      getExistingHabitsWeekly =
-        ( do
-            rows <- Sqlite.query_ conn "PRAGMA table_info(habits_weekly)" :: IO [(Int, Text, Text, Int, Maybe Text, Int)]
-            pure (map (\(_, name_, _, _, _, _) -> name_) rows)
-        )
-          `catch` (\(_ :: Sqlite.SQLError) -> pure [])
-
-  existingHabitsWeekly <- getExistingHabitsWeekly
-  case existingHabitsWeekly of
-    [] -> pure ()
-    cols | cols == expectedHabitCols -> pure ()
-    _ -> Sqlite.execute_ conn "DROP TABLE IF EXISTS habits_weekly"
-
-  Sqlite.execute_
+  -- Create habits_daily table
+  PG.execute_
     conn
-    "CREATE TABLE IF NOT EXISTS habits_weekly \
-    \(id TEXT PRIMARY KEY, \
-    \user TEXT NOT NULL, \
-    \name TEXT NOT NULL, \
-    \description TEXT, \
-    \sort TEXT NOT NULL, \
-    \rate TEXT NOT NULL, \
-    \deadline TEXT NOT NULL, \
-    \FOREIGN KEY (user) REFERENCES users(id))"
+    "CREATE TABLE IF NOT EXISTS habits_daily (id TEXT PRIMARY KEY, \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, sort JSONB NOT NULL, rate JSONB NOT NULL, deadline TEXT NOT NULL)"
 
-  -- intentions (daily)
-  let getExistingIntentionsDaily :: IO [Text]
-      getExistingIntentionsDaily =
-        ( do
-            rows <- Sqlite.query_ conn "PRAGMA table_info(intentions_daily)" :: IO [(Int, Text, Text, Int, Maybe Text, Int)]
-            pure (map (\(_, name_, _, _, _, _) -> name_) rows)
-        )
-          `catch` (\(_ :: Sqlite.SQLError) -> pure [])
-
-  existingIntentionsDaily <- getExistingIntentionsDaily
-  case existingIntentionsDaily of
-    [] -> pure ()
-    cols | cols == expectedIntentionCols -> pure ()
-    _ -> Sqlite.execute_ conn "DROP TABLE IF EXISTS intentions_daily"
-
-  Sqlite.execute_
+  -- Create habits_weekly table
+  PG.execute_
     conn
-    "CREATE TABLE IF NOT EXISTS intentions_daily \
-    \(id TEXT PRIMARY KEY, \
-    \user TEXT NOT NULL, \
-    \name TEXT NOT NULL, \
-    \description TEXT, \
-    \rate TEXT NOT NULL, \
-    \deadline TEXT NOT NULL, \
-    \FOREIGN KEY (user) REFERENCES users(id))"
+    "CREATE TABLE IF NOT EXISTS habits_weekly (id TEXT PRIMARY KEY, \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, sort JSONB NOT NULL, rate JSONB NOT NULL, deadline TEXT NOT NULL)"
 
-  -- intentions (weekly)
-  let getExistingIntentionsWeekly :: IO [Text]
-      getExistingIntentionsWeekly =
-        ( do
-            rows <- Sqlite.query_ conn "PRAGMA table_info(intentions_weekly)" :: IO [(Int, Text, Text, Int, Maybe Text, Int)]
-            pure (map (\(_, name_, _, _, _, _) -> name_) rows)
-        )
-          `catch` (\(_ :: Sqlite.SQLError) -> pure [])
-
-  existingIntentionsWeekly <- getExistingIntentionsWeekly
-  case existingIntentionsWeekly of
-    [] -> pure ()
-    cols | cols == expectedIntentionCols -> pure ()
-    _ -> Sqlite.execute_ conn "DROP TABLE IF EXISTS intentions_weekly"
-
-  Sqlite.execute_
+  -- Create intentions_daily table
+  PG.execute_
     conn
-    "CREATE TABLE IF NOT EXISTS intentions_weekly \
-    \(id TEXT PRIMARY KEY, \
-    \user TEXT NOT NULL, \
-    \name TEXT NOT NULL, \
-    \description TEXT, \
-    \rate TEXT NOT NULL, \
-    \deadline TEXT NOT NULL, \
-    \FOREIGN KEY (user) REFERENCES users(id))"
+    "CREATE TABLE IF NOT EXISTS intentions_daily (id TEXT PRIMARY KEY, \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, rate JSONB NOT NULL, deadline TEXT NOT NULL)"
+
+  -- Create intentions_weekly table
+  PG.execute_
+    conn
+    "CREATE TABLE IF NOT EXISTS intentions_weekly (id TEXT PRIMARY KEY, \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, description TEXT, rate JSONB NOT NULL, deadline TEXT NOT NULL)"
+
+  putStrLn "Database schema initialized successfully"

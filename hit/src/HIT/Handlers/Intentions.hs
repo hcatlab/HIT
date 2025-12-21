@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -11,16 +10,17 @@ module HIT.Handlers.Intentions
   )
 where
 
+import Data.Proxy (Proxy (..))
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam (Identity)
-import Database.SQLite.Simple (Connection)
-import Data.Proxy (Proxy (..))
+import Database.Beam.Postgres (PgJSON (..))
+import Database.PostgreSQL.Simple (Connection)
 import HIT.Api.Intentions (CreateIntentionRequest (..), IntentionApiFor, IntentionResponse (..), IntentionsApi, UpdateIntentionRequest (..))
 import HIT.Crud (CrudApiFor, CrudResource (..), crudServerTc)
+import HIT.DB (createIntention, deleteIntention, getIntention, listIntentions, updateIntention)
 import HIT.DB.Schema (IntentionTableSelector)
 import HIT.Types.Deadline (DeadlineCodec)
-import HIT.DB (createIntention, deleteIntention, getIntention, listIntentions, updateIntention)
 import HIT.Types.Intention qualified as Intention (IntentionT (..))
 import HIT.Types.Interval (Interval (Daily, Weekly))
 import HIT.Types.User (User)
@@ -61,5 +61,5 @@ intentionsServer conn user =
     :<|> crudServerTc (IntentionsResource @'Weekly conn) user
 
 toIntentionResponse :: Intention.IntentionT p Identity -> IntentionResponse p
-toIntentionResponse (Intention.Intention iid _ iname idesc irate ideadline) =
+toIntentionResponse (Intention.Intention iid _ iname idesc (PgJSON irate) ideadline) =
   IntentionResponse (UUID.toText iid) iname idesc irate ideadline
