@@ -6,9 +6,10 @@ import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode
+import String
 
 
-main : Program () Model Msg
+main : Program Flags Model Msg
 main =
     Browser.element
         { init = init
@@ -20,6 +21,12 @@ main =
 
 type alias Model =
     { serverStatus : ServerStatus
+    , apiBaseUrl : String
+    }
+
+
+type alias Flags =
+    { apiBaseUrl : String
     }
 
 
@@ -30,9 +37,13 @@ type ServerStatus
     | Error String
 
 
-init : () -> ( Model, Cmd Msg )
-init () =
-    ( { serverStatus = Unknown }, Cmd.none )
+init : Flags -> ( Model, Cmd Msg )
+init flags =
+    ( { serverStatus = Unknown
+      , apiBaseUrl = normalizeBaseUrl flags.apiBaseUrl
+      }
+    , Cmd.none
+    )
 
 
 type Msg
@@ -46,7 +57,7 @@ update msg model =
         CheckHealth ->
             ( { model | serverStatus = Loading }
             , Http.get
-                { url = "http://localhost:8080/health"
+                { url = healthUrl model.apiBaseUrl
                 , expect = Http.expectJson HealthResponse (Decode.field "status" Decode.string)
                 }
             )
@@ -62,6 +73,24 @@ update msg model =
 
                 Result.Err err ->
                     ( { model | serverStatus = Error (httpErrorToString err) }, Cmd.none )
+
+
+healthUrl : String -> String
+healthUrl baseUrl =
+    normalizeBaseUrl baseUrl ++ "/health"
+
+
+normalizeBaseUrl : String -> String
+normalizeBaseUrl rawBase =
+    let
+        trimmed =
+            String.trim rawBase
+    in
+    if String.endsWith "/" trimmed then
+        String.dropRight 1 trimmed
+
+    else
+        trimmed
 
 
 httpErrorToString : Http.Error -> String
@@ -88,6 +117,7 @@ view model =
     article []
         [ h2 [] [ text "Server Status" ]
         , p [] [ text "Check the connection to the HIT backend server." ]
+        , p [] [ text ("Backend: " ++ model.apiBaseUrl) ]
         , p []
             [ button [ onClick CheckHealth ] [ text "Check Server Health" ]
             , text "  "

@@ -24,8 +24,13 @@
 
   <script src="dist/main.js"></script>
   <script>
+    // Allow overriding the backend base URL by defining window.HIT_API_BASE_URL before this script runs.
+    const apiBaseUrl = window.HIT_API_BASE_URL || "http://localhost:8080";
     var app = Elm.Main.init({
-      node: document.getElementById('app')
+      node: document.getElementById('app'),
+      flags: {
+        apiBaseUrl
+      }
     });
   </script>
 </body>
