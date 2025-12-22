@@ -97,16 +97,16 @@ instance (IntentionTableSelector p, IntervalTag p, DeadlineJson p) => CrudResour
     deleteIntention @p Proxy conn (User.id u)
 
 toIntentionViewDaily :: Intention.IntentionT 'Daily Identity -> [UUID] -> IntentionView
-toIntentionViewDaily (Intention.Intention iid _ iname idesc _ irate ideadline) goalIds =
-  IntentionView (UUID.toText iid) Daily iname idesc irate (DailyIntentionDeadline ideadline) (map UUID.toText goalIds)
+toIntentionViewDaily (Intention.Intention iid _ iname idesc _ irate ideadline createdAt modifiedAt) goalIds =
+  IntentionView (UUID.toText iid) Daily iname idesc irate (DailyIntentionDeadline ideadline) (map UUID.toText goalIds) createdAt modifiedAt
 
 toIntentionViewWeekly :: Intention.IntentionT 'Weekly Identity -> [UUID] -> IntentionView
-toIntentionViewWeekly (Intention.Intention iid _ iname idesc _ irate ideadline) goalIds =
-  IntentionView (UUID.toText iid) Weekly iname idesc irate (WeeklyIntentionDeadline ideadline) (map UUID.toText goalIds)
+toIntentionViewWeekly (Intention.Intention iid _ iname idesc _ irate ideadline createdAt modifiedAt) goalIds =
+  IntentionView (UUID.toText iid) Weekly iname idesc irate (WeeklyIntentionDeadline ideadline) (map UUID.toText goalIds) createdAt modifiedAt
 
 toIntentionResponseWithGoals :: (Intention.IntentionT p Identity, [UUID]) -> IntentionResponse p
-toIntentionResponseWithGoals (Intention.Intention iid _ iname idesc _ irate ideadline, goalIds) =
-  IntentionResponse (UUID.toText iid) iname idesc irate ideadline (map UUID.toText goalIds)
+toIntentionResponseWithGoals (Intention.Intention iid _ iname idesc _ irate ideadline createdAt modifiedAt, goalIds) =
+  IntentionResponse (UUID.toText iid) iname idesc irate ideadline (map UUID.toText goalIds) createdAt modifiedAt
 
 parseGoalIds :: NonEmpty Text -> IO (NonEmpty UUID)
 parseGoalIds ids = case traverse UUID.fromText ids of

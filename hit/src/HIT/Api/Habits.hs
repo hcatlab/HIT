@@ -12,6 +12,7 @@ import Control.Applicative ((<|>))
 import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.!=), (.:), (.:?), (.=))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
+import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import HIT.Types.Deadline (Deadline)
 import HIT.Types.Fraction (Fraction)
@@ -73,7 +74,9 @@ data HabitResponse (p :: Interval) = HabitResponse
     sort :: Sort,
     rate :: Fraction,
     deadline :: Deadline p,
-    goalIds :: [Text]
+    goalIds :: [Text],
+    createdAt :: UTCTime,
+    modifiedAt :: UTCTime
   }
   deriving (Show, Eq, Generic)
 
@@ -97,7 +100,9 @@ data HabitView = HabitView
     sort :: Sort,
     rate :: Fraction,
     deadline :: HabitDeadline,
-    goalIds :: [Text]
+    goalIds :: [Text],
+    createdAt :: UTCTime,
+    modifiedAt :: UTCTime
   }
   deriving (Show, Eq, Generic)
 
@@ -109,14 +114,16 @@ instance FromJSON HabitDeadline where
   parseJSON v = (DailyDeadline <$> parseJSON v) <|> (WeeklyDeadline <$> parseJSON v)
 
 instance ToJSON HabitView where
-  toJSON (HabitView hid hint name desc sort rate deadlineVal goalIds) =
+  toJSON (HabitView hid hint name desc sort rate deadlineVal goalIds createdAt modifiedAt) =
     let baseFields =
           [ "id" .= hid,
             "interval" .= hint,
             "name" .= name,
             "description" .= desc,
             "sort" .= sort,
-            "rate" .= rate
+            "rate" .= rate,
+            "createdAt" .= createdAt,
+            "modifiedAt" .= modifiedAt
           ]
         deadlineField = case (hint, deadlineVal) of
           (Daily, DailyDeadline d) -> ["deadline" .= d]
@@ -138,4 +145,6 @@ instance FromJSON HabitView where
         Daily -> DailyDeadline <$> o .: "deadline"
         Weekly -> WeeklyDeadline <$> o .: "deadline"
       goalIds <- o .:? "goalIds" .!= []
-      pure (HabitView hid hint name desc sort rate deadlineVal goalIds)
+      createdAt <- o .: "createdAt"
+      modifiedAt <- o .: "modifiedAt"
+      pure (HabitView hid hint name desc sort rate deadlineVal goalIds createdAt modifiedAt)

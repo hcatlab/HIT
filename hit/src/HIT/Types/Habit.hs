@@ -13,6 +13,7 @@ module HIT.Types.Habit
 where
 
 import Data.Text (Text)
+import Data.Time (UTCTime)
 import Data.Typeable (Typeable)
 import Data.UUID (UUID)
 import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
@@ -33,7 +34,9 @@ data HabitT (p :: Interval) f = Habit
     interval :: Columnar f Interval,
     sort :: Columnar f Sort,
     rate :: Columnar f Fraction,
-    deadline :: Columnar f (Deadline p)
+    deadline :: Columnar f (Deadline p),
+    createdAt :: Columnar f UTCTime,
+    modifiedAt :: Columnar f UTCTime
   }
   deriving (Generic)
 
@@ -47,7 +50,7 @@ instance Beamable (HabitT p)
 
 instance (Typeable p) => Table (HabitT p) where
   data PrimaryKey (HabitT p) f = HabitId (Columnar f UUID) deriving (Generic)
-  primaryKey (Habit hid _ _ _ _ _ _ _) = HabitId hid
+  primaryKey (Habit hid _ _ _ _ _ _ _ _ _) = HabitId hid
 
 deriving instance Show (PrimaryKey (HabitT p) Identity)
 

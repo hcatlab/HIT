@@ -1,7 +1,5 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 
 module HIT.Handlers.Goals
   ( goalsServer,
@@ -47,14 +45,14 @@ instance CrudResource GoalsResource where
   update (GoalsResource conn) u gid (UpdateGoalRequest gname gdesc) =
     fmap toGoalResponse <$> updateGoal conn (User.id u) gid gname gdesc
 
-  delete (GoalsResource conn) u gid =
-    deleteGoal conn (User.id u) gid
+  delete (GoalsResource conn) u =
+    deleteGoal conn (User.id u)
 
 goalsServer :: Connection -> User -> Server GoalsApi
-goalsServer conn user = crudServerTc (GoalsResource conn) user
+goalsServer conn = crudServerTc (GoalsResource conn)
 
 toGoalResponse :: Goal.GoalT Identity -> GoalResponse
-toGoalResponse (Goal.Goal gid _ gname gdesc) =
-  GoalResponse (UUID.toText gid) gname gdesc
+toGoalResponse (Goal.Goal gid _ gname gdesc createdAt modifiedAt) =
+  GoalResponse (UUID.toText gid) gname gdesc createdAt modifiedAt
 
 type GoalsApi = CrudApiFor GoalsResource

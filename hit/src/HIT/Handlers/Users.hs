@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 
 module HIT.Handlers.Users
   ( usersServer,
@@ -29,7 +28,7 @@ instance CrudResource UsersResource where
   type UpdateReq UsersResource = UpdateUserRequest
   type Resp UsersResource = UserResponse
 
-  parseId _ t = Just t
+  parseId _ = Just
 
   list (UsersResource conn) _ =
     map toUserResponse <$> listAllUsers conn
@@ -54,9 +53,9 @@ instance CrudResource UsersResource where
       else pure False
 
 usersServer :: Connection -> User -> Server UsersApi
-usersServer conn user = crudServerTc (UsersResource conn) user
+usersServer conn = crudServerTc (UsersResource conn)
 
 toUserResponse :: User -> UserResponse
-toUserResponse user = ApiUsers.UserResponse (UserType.id user) (UserType.email user)
+toUserResponse user = ApiUsers.UserResponse (UserType.id user) (UserType.email user) (UserType.createdAt user) (UserType.modifiedAt user)
 
 type UsersApi = CrudApiFor UsersResource

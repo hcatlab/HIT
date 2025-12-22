@@ -10,6 +10,7 @@ module HIT.DB.Goals
 where
 
 import Data.Text (Text)
+import Data.Time (UTCTime, getCurrentTime)
 import Data.UUID (UUID)
 import Database.Beam
 import Database.Beam.Postgres (runBeamPostgres)
@@ -21,7 +22,8 @@ import HIT.Types.User (PrimaryKey (UserId))
 
 createGoal :: Connection -> UUID -> Text -> Text -> Maybe Text -> IO Goal
 createGoal conn goalId uid gname gdesc = do
-  let g = Goal goalId (UserId uid) gname gdesc
+  now <- getCurrentTime
+  let g = Goal goalId (UserId uid) gname gdesc now now
   runBeamPostgres conn $
     runInsert $
       insert (goals hitDb) $
@@ -51,14 +53,15 @@ updateGoal conn uid goalId gname gdesc = do
   mExisting <- getGoal conn uid goalId
   case mExisting of
     Nothing -> pure Nothing
-    Just _ -> do
+    Just (Goal _ _ _ _ createdAtOld _) -> do
+      now <- getCurrentTime
       runBeamPostgres conn $
         runUpdate $
           update
             (goals hitDb)
-            (\g -> mconcat [Goal.name g <-. val_ gname, Goal.description g <-. val_ gdesc])
+            (\g -> mconcat [Goal.name g <-. val_ gname, Goal.description g <-. val_ gdesc, Goal.modifiedAt g <-. val_ now])
             (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
-      pure (Just (Goal goalId (UserId uid) gname gdesc))
+      pure (Just (Goal goalId (UserId uid) gname gdesc createdAtOld now))
 
 deleteGoal :: Connection -> Text -> UUID -> IO Bool
 deleteGoal conn uid goalId = do

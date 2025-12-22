@@ -15,8 +15,10 @@ import Data.Aeson.Types (Value (..))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import Data.Text.Encoding qualified as Text
+import Data.Time (UTCTime)
+import Data.Time.Format (defaultTimeLocale, parseTimeM)
 import Data.Vector qualified as V
 import Database.PostgreSQL.Simple (Connection)
 import HIT.Api (HITApiWithSwagger, HealthResponse (..))
@@ -64,10 +66,10 @@ server conn = hitApi :<|> pure mempty
         Nothing -> throwError err401
         Just u -> pure (LoginResponse (ApiToken (apiToken u)) (toPublicUser u))
     me user = pure (toPublicUser user)
-    goals user = goalsServer conn user
-    users user = usersServer conn user
-    habits user = habitsServer conn user
-    intentions user = intentionsServer conn user
+    goals = goalsServer conn
+    users = usersServer conn
+    habits = habitsServer conn
+    intentions = intentionsServer conn
 
 authHandler :: Connection -> AuthHandler Request User
 authHandler conn = mkAuthHandler $ \req -> do
@@ -112,12 +114,30 @@ spec = with mkApp $ do
       goalRes <- request "POST" "/goals" [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Build HIT","description":"Build Habit and Intention Tracker"} |]
       let gid = extractId goalRes
       readRes <- request "GET" (BS.append "/goals/" (Text.encodeUtf8 gid)) [authHeader tok] ""
-      case eitherDecode (simpleBody readRes) of
-        Right (Object o) -> case (KM.lookup "name" o, KM.lookup "description" o) of
-          (Just (String n), Just (String d)) -> do
+      (createdAt, modifiedAt) <- case eitherDecode (simpleBody readRes) of
+        Right (Object o) -> case (KM.lookup "name" o, KM.lookup "description" o, KM.lookup "createdAt" o, KM.lookup "modifiedAt" o) of
+          (Just (String n), Just (String d), Just (String c), Just (String m)) -> do
             liftIO $ if n == "Build HIT" && d == "Build Habit and Intention Tracker" then pure () else fail "Goal fields mismatch"
-          _ -> liftIO $ fail "Goal response missing fields"
-        _ -> liftIO $ fail "Invalid goal response JSON"
+            let parseTS = parseTimeM True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" . unpack :: Text -> Maybe UTCTime
+            ct <- maybe (fail "createdAt parse fail") pure (parseTS c)
+            mt <- maybe (fail "modifiedAt parse fail") pure (parseTS m)
+            liftIO $ if ct == mt then pure () else fail "createdAt and modifiedAt should be equal on create"
+            pure (ct, mt)
+          _ -> liftIO (fail "Goal response missing fields")
+        _ -> liftIO (fail "Invalid goal response JSON")
+      -- Update goal and check modifiedAt changes
+      _ <- request "PUT" (BS.append "/goals/" (Text.encodeUtf8 gid)) [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Build HIT+","description":"Updated desc"} |]
+      updRes <- request "GET" (BS.append "/goals/" (Text.encodeUtf8 gid)) [authHeader tok] ""
+      case eitherDecode (simpleBody updRes) of
+        Right (Object o) -> case (KM.lookup "createdAt" o, KM.lookup "modifiedAt" o) of
+          (Just (String c2), Just (String m2)) -> do
+            let parseTS = parseTimeM True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" . unpack :: Text -> Maybe UTCTime
+            ct2 <- maybe (fail "createdAt parse fail (upd)") pure (parseTS c2)
+            mt2 <- maybe (fail "modifiedAt parse fail (upd)") pure (parseTS m2)
+            liftIO $ if ct2 == createdAt then pure () else fail "createdAt should not change on update"
+            liftIO $ if mt2 > modifiedAt then pure () else fail "modifiedAt should increase on update"
+          _ -> liftIO (fail "Goal update response missing timestamps")
+        _ -> liftIO (fail "Invalid goal update response JSON")
       listGoals <- request "GET" "/goals" [authHeader tok] ""
       case eitherDecode (simpleBody listGoals) of
         Right (Array arr) -> do
@@ -139,13 +159,32 @@ spec = with mkApp $ do
       habitRes <- request "POST" "/habits/daily" [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Drink","description":"8 cups","sort":true,"rate":"1/1","deadline":[9,12,15],"goalIds":[#{gid}]} |]
       let hid = extractId habitRes
       readHabit <- request "GET" (BS.append "/habits/daily/" (Text.encodeUtf8 hid)) [authHeader tok] ""
-      case eitherDecode (simpleBody readHabit) of
-        Right (Object o) -> case (KM.lookup "name" o, KM.lookup "goalIds" o) of
-          (Just (String n), Just (Array gids)) -> do
+      (createdAt, modifiedAt) <- case eitherDecode (simpleBody readHabit) of
+        Right (Object o) -> case (KM.lookup "name" o, KM.lookup "goalIds" o, KM.lookup "createdAt" o, KM.lookup "modifiedAt" o) of
+          (Just (String n), Just (Array gids), Just (String c), Just (String m)) -> do
             let expected = V.singleton (String gid)
             liftIO $ if n == "Drink" && gids == expected then pure () else fail "Habit fields/goalIds mismatch"
-          _ -> liftIO $ fail "Habit response missing fields"
-        _ -> liftIO $ fail "Invalid habit response JSON"
+            let parseTS = parseTimeM True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" . unpack :: Text -> Maybe UTCTime
+            ct <- maybe (fail "createdAt parse fail") pure (parseTS c)
+            mt <- maybe (fail "modifiedAt parse fail") pure (parseTS m)
+            liftIO $ if ct == mt then pure () else fail "createdAt and modifiedAt should be equal on create (habit)"
+            pure (ct, mt)
+          _ -> liftIO (fail "Habit response missing fields")
+        _ -> liftIO (fail "Invalid habit response JSON")
+      -- Update habit and check modifiedAt changes
+      _ <- request "PUT" (BS.append "/habits/daily/" (Text.encodeUtf8 hid)) [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Drink+","description":"8 cups+","sort":true,"rate":"1/1","deadline":[10,12,15],"goalIds":[#{gid}]} |]
+      updRes <- request "GET" (BS.append "/habits/daily/" (Text.encodeUtf8 hid)) [authHeader tok] ""
+      case eitherDecode (simpleBody updRes) of
+        Right (Object o) -> case (KM.lookup "createdAt" o, KM.lookup "modifiedAt" o) of
+          (Just (String c2), Just (String m2)) -> do
+            let parseTS = parseTimeM True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" . unpack :: Text -> Maybe UTCTime
+            ct2 <- maybe (fail "createdAt parse fail (upd)") pure (parseTS c2)
+            mt2 <- maybe (fail "modifiedAt parse fail (upd)") pure (parseTS m2)
+            liftIO $ if ct2 == createdAt then pure () else fail "createdAt should not change on update (habit)"
+            liftIO $ if mt2 > modifiedAt then pure () else fail "modifiedAt should increase on update (habit)"
+          _ -> liftIO (fail "Habit update response missing timestamps")
+        _ -> liftIO (fail "Invalid habit update response JSON")
+      -- List check remains unchanged
       listHabits <- request "GET" "/habits?interval=daily" [authHeader tok] ""
       case eitherDecode (simpleBody listHabits) of
         Right (Array arr) -> do
@@ -153,14 +192,14 @@ spec = with mkApp $ do
                 V.any
                   ( \case
                       Object o ->
-                        KM.lookup "name" o == Just (String "Drink")
+                        KM.lookup "name" o == Just (String "Drink+")
                           && case KM.lookup "goalIds" o of
                             Just (Array gids) -> V.any (== String gid) gids
                             _ -> False
                       _ -> False
                   )
                   arr
-          liftIO $ unless hasItem (fail "Created habit not found in /habits?interval=daily list")
+          liftIO $ unless hasItem (fail "Updated habit not found in /habits?interval=daily list")
         _ -> liftIO $ fail "Invalid /habits list response JSON"
 
     it "create weekly intention and read it back" $ do
@@ -171,13 +210,32 @@ spec = with mkApp $ do
       intentRes <- request "POST" "/intentions/weekly" [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Practice","description":"30m","rate":"1/1","deadline":{"monday":[19],"tuesday":[],"wednesday":[19],"thursday":[],"friday":[19],"saturday":[10],"sunday":[]},"goalIds":[#{gid}]} |]
       let iid = extractId intentRes
       readIntent <- request "GET" (BS.append "/intentions/weekly/" (Text.encodeUtf8 iid)) [authHeader tok] ""
-      case eitherDecode (simpleBody readIntent) of
-        Right (Object o) -> case (KM.lookup "name" o, KM.lookup "goalIds" o) of
-          (Just (String n), Just (Array gids)) -> do
+      (createdAt, modifiedAt) <- case eitherDecode (simpleBody readIntent) of
+        Right (Object o) -> case (KM.lookup "name" o, KM.lookup "goalIds" o, KM.lookup "createdAt" o, KM.lookup "modifiedAt" o) of
+          (Just (String n), Just (Array gids), Just (String c), Just (String m)) -> do
             let expected = V.singleton (String gid)
             liftIO $ if n == "Practice" && gids == expected then pure () else fail "Intention fields/goalIds mismatch"
-          _ -> liftIO $ fail "Intention response missing fields"
-        _ -> liftIO $ fail "Invalid intention response JSON"
+            let parseTS = parseTimeM True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" . unpack :: Text -> Maybe UTCTime
+            ct <- maybe (fail "createdAt parse fail") pure (parseTS c)
+            mt <- maybe (fail "modifiedAt parse fail") pure (parseTS m)
+            liftIO $ if ct == mt then pure () else fail "createdAt and modifiedAt should be equal on create (intention)"
+            pure (ct, mt)
+          _ -> liftIO (fail "Intention response missing fields")
+        _ -> liftIO (fail "Invalid intention response JSON")
+      -- Update intention and check modifiedAt changes
+      _ <- request "PUT" (BS.append "/intentions/weekly/" (Text.encodeUtf8 iid)) [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Practice+","description":"31m","rate":"1/1","deadline":{"monday":[20],"tuesday":[],"wednesday":[20],"thursday":[],"friday":[20],"saturday":[11],"sunday":[]},"goalIds":[#{gid}]} |]
+      updRes <- request "GET" (BS.append "/intentions/weekly/" (Text.encodeUtf8 iid)) [authHeader tok] ""
+      case eitherDecode (simpleBody updRes) of
+        Right (Object o) -> case (KM.lookup "createdAt" o, KM.lookup "modifiedAt" o) of
+          (Just (String c2), Just (String m2)) -> do
+            let parseTS = parseTimeM True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" . unpack :: Text -> Maybe UTCTime
+            ct2 <- maybe (fail "createdAt parse fail (upd)") pure (parseTS c2)
+            mt2 <- maybe (fail "modifiedAt parse fail (upd)") pure (parseTS m2)
+            liftIO $ if ct2 == createdAt then pure () else fail "createdAt should not change on update (intention)"
+            liftIO $ if mt2 > modifiedAt then pure () else fail "modifiedAt should increase on update (intention)"
+          _ -> liftIO (fail "Intention update response missing timestamps")
+        _ -> liftIO (fail "Invalid intention update response JSON")
+      -- List check remains unchanged
       listIntent <- request "GET" "/intentions?interval=weekly" [authHeader tok] ""
       case eitherDecode (simpleBody listIntent) of
         Right (Array arr) -> do
@@ -185,14 +243,14 @@ spec = with mkApp $ do
                 V.any
                   ( \case
                       Object o ->
-                        KM.lookup "name" o == Just (String "Practice")
+                        KM.lookup "name" o == Just (String "Practice+")
                           && case KM.lookup "goalIds" o of
                             Just (Array gids) -> V.any (== String gid) gids
                             _ -> False
                       _ -> False
                   )
                   arr
-          liftIO $ unless hasItem (fail "Created intention not found in /intentions?interval=weekly list")
+          liftIO $ unless hasItem (fail "Updated intention not found in /intentions?interval=weekly list")
         _ -> liftIO $ fail "Invalid /intentions list response JSON"
 
 -- No tests when DATABASE_URL is not set; the group is marked as (skipped)

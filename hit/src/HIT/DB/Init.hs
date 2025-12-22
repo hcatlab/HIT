@@ -58,7 +58,9 @@ initDb conn = do
             "  id TEXT PRIMARY KEY,",
             "  email TEXT UNIQUE NOT NULL,",
             "  password_hash TEXT NOT NULL,",
-            "  api_token TEXT UNIQUE NOT NULL",
+            "  api_token TEXT UNIQUE NOT NULL,",
+            "  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP",
             ")"
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createUsersSql))
@@ -71,7 +73,9 @@ initDb conn = do
             "  id UUID PRIMARY KEY,",
             "  \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,",
             "  name TEXT NOT NULL,",
-            "  description TEXT",
+            "  description TEXT,",
+            "  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP",
             ")"
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createGoalsSql))
@@ -88,7 +92,9 @@ initDb conn = do
             "  interval TEXT NOT NULL,",
             "  sort JSON NOT NULL,",
             "  rate JSON NOT NULL,",
-            "  deadline JSON NOT NULL",
+            "  deadline JSON NOT NULL,",
+            "  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP",
             ")"
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createHabitsSql))
@@ -116,7 +122,9 @@ initDb conn = do
             "  description TEXT,",
             "  interval TEXT NOT NULL,",
             "  rate JSON NOT NULL,",
-            "  deadline JSON NOT NULL",
+            "  deadline JSON NOT NULL,",
+            "  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP",
             ")"
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createIntentionsSql))

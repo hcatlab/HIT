@@ -19,6 +19,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
+import Data.Time (UTCTime, getCurrentTime)
 import Data.UUID (UUID)
 import Database.Beam
 import Database.Beam.Postgres (runBeamPostgres)
@@ -35,7 +36,8 @@ import HIT.Types.User (PrimaryKey (UserId))
 
 createHabit :: forall p. (HabitTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> UUID -> Text -> Text -> Maybe Text -> Sort -> Fraction -> Deadline p -> NonEmpty UUID -> IO (Habit p)
 createHabit conn habitId uid hname hdesc hsort hrate hdeadline goalIds = do
-  let h = Habit habitId (UserId uid) hname hdesc (intervalVal (Proxy @p)) hsort hrate hdeadline
+  now <- getCurrentTime
+  let h = Habit habitId (UserId uid) hname hdesc (intervalVal (Proxy @p)) hsort hrate hdeadline now now
   runBeamPostgres conn $
     runInsert $
       insert (habitTable @p hitDb) $
@@ -80,27 +82,26 @@ updateHabit conn uid habitId hname hdesc hsort hrate hdeadline goalIds = do
   mExisting <- getHabit @p conn uid habitId
   case mExisting of
     Nothing -> pure Nothing
-    Just _ -> do
-      runBeamPostgres
-        conn
-        ( runUpdate
-            ( update
-                (habitTable @p hitDb)
-                ( \h ->
-                    mconcat
-                      [ Habit.name h <-. val_ hname,
-                        Habit.description h <-. val_ hdesc,
-                        Habit.interval h <-. val_ (intervalVal (Proxy @p)),
-                        Habit.sort h <-. val_ hsort,
-                        Habit.rate h <-. val_ hrate,
-                        Habit.deadline h <-. val_ hdeadline
-                      ]
-                )
-                (\h -> Habit.id h ==. val_ habitId &&. Habit.user h ==. UserId (val_ uid) &&. Habit.interval h ==. val_ (intervalVal (Proxy @p)))
+    Just (Habit _ _ _ _ _ _ _ _ createdAtOld _) -> do
+      now <- getCurrentTime
+      runBeamPostgres conn $
+        runUpdate $
+          update
+            (habitTable @p hitDb)
+            ( \h ->
+                mconcat
+                  [ Habit.name h <-. val_ hname,
+                    Habit.description h <-. val_ hdesc,
+                    Habit.interval h <-. val_ (intervalVal (Proxy @p)),
+                    Habit.sort h <-. val_ hsort,
+                    Habit.rate h <-. val_ hrate,
+                    Habit.deadline h <-. val_ hdeadline,
+                    Habit.modifiedAt h <-. val_ now
+                  ]
             )
-        )
+            (\h -> Habit.id h ==. val_ habitId &&. Habit.user h ==. UserId (val_ uid) &&. Habit.interval h ==. val_ (intervalVal (Proxy @p)))
       replaceHabitGoals conn habitId goalIds
-      pure (Just (Habit habitId (UserId uid) hname hdesc (intervalVal (Proxy @p)) hsort hrate hdeadline))
+      pure (Just (Habit habitId (UserId uid) hname hdesc (intervalVal (Proxy @p)) hsort hrate hdeadline createdAtOld now))
 
 deleteHabit :: forall p. (HabitTableSelector p, DeadlineJson p, IntervalTag p) => Proxy p -> Connection -> Text -> UUID -> IO Bool
 deleteHabit _ conn uid habitId = do

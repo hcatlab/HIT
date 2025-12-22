@@ -1,11 +1,8 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -26,13 +23,8 @@ import HIT.Types
 import Servant
 import Servant.Swagger
 
--- | Swagger API for serving the OpenAPI spec
 type SwaggerApi = "swagger.json" :> Get '[JSON] Swagger
 
--- | Generate the Swagger specification for HITApi
--- Note: We generate from a simplified version without AuthProtect since servant-swagger
--- doesn't have a default instance for AuthProtect. In reality, these endpoints require
--- Bearer token authentication in the Authorization header.
 hitSwagger :: Swagger
 hitSwagger =
   toSwagger unprotectedApi
@@ -91,7 +83,7 @@ instance ToSchema Fraction where
       NamedSchema (Just "Fraction") $
         mempty
           & type_ ?~ SwaggerString
-          & pattern ?~ "^[0-9]+/[0-9]+$"
+          & S.pattern ?~ "^[0-9]+/[0-9]+$"
           & S.description ?~ "Fraction represented as 'numerator/denominator'"
           & example ?~ toJSON (Fraction 3 4)
 
@@ -123,7 +115,8 @@ instance ToSchema Weekdays where
       NamedSchema (Just "Weekdays") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList
+          & properties
+            .~ IOHM.fromList
               [ ("monday", Inline $ toSchema (Proxy :: Proxy Hours)),
                 ("tuesday", Inline $ toSchema (Proxy :: Proxy Hours)),
                 ("wednesday", Inline $ toSchema (Proxy :: Proxy Hours)),
@@ -165,9 +158,11 @@ instance ToSchema PublicUser where
       NamedSchema (Just "PublicUser") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("email", Inline $ mempty & type_ ?~ SwaggerString)
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
+                ("email", Inline $ mempty & type_ ?~ SwaggerString)
+              ]
           & required .~ ["id", "email"]
           & S.description ?~ "Public user information"
 
@@ -178,10 +173,12 @@ instance ToSchema SignupRequest where
       NamedSchema (Just "SignupRequest") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("email", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("password", Inline $ mempty & type_ ?~ SwaggerString)
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
+                ("email", Inline $ mempty & type_ ?~ SwaggerString),
+                ("password", Inline $ mempty & type_ ?~ SwaggerString)
+              ]
           & required .~ ["id", "email", "password"]
           & S.description ?~ "Signup request with user credentials"
 
@@ -191,9 +188,11 @@ instance ToSchema SignupResponse where
       NamedSchema (Just "SignupResponse") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("token", Inline $ toSchema (Proxy :: Proxy ApiToken)),
-                            ("user", Inline $ toSchema (Proxy :: Proxy PublicUser))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("token", Inline $ toSchema (Proxy :: Proxy ApiToken)),
+                ("user", Inline $ toSchema (Proxy :: Proxy PublicUser))
+              ]
           & required .~ ["token", "user"]
           & S.description ?~ "Signup response with auth token and user info"
 
@@ -203,9 +202,11 @@ instance ToSchema LoginRequest where
       NamedSchema (Just "LoginRequest") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("password", Inline $ mempty & type_ ?~ SwaggerString)
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
+                ("password", Inline $ mempty & type_ ?~ SwaggerString)
+              ]
           & required .~ ["id", "password"]
           & S.description ?~ "Login request with credentials"
 
@@ -215,9 +216,11 @@ instance ToSchema LoginResponse where
       NamedSchema (Just "LoginResponse") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("token", Inline $ toSchema (Proxy :: Proxy ApiToken)),
-                            ("user", Inline $ toSchema (Proxy :: Proxy PublicUser))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("token", Inline $ toSchema (Proxy :: Proxy ApiToken)),
+                ("user", Inline $ toSchema (Proxy :: Proxy PublicUser))
+              ]
           & required .~ ["token", "user"]
           & S.description ?~ "Login response with auth token and user info"
 
@@ -239,10 +242,12 @@ instance ToSchema CreateGoalRequest where
       NamedSchema (Just "CreateGoalRequest") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("state", Inline $ toSchema (Proxy :: Proxy State))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("state", Inline $ toSchema (Proxy :: Proxy State))
+              ]
           & required .~ ["name", "state"]
           & S.description ?~ "Request to create a new goal"
 
@@ -252,10 +257,12 @@ instance ToSchema UpdateGoalRequest where
       NamedSchema (Just "UpdateGoalRequest") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("state", Inline $ toSchema (Proxy :: Proxy State))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("state", Inline $ toSchema (Proxy :: Proxy State))
+              ]
           & required .~ ["name", "state"]
           & S.description ?~ "Request to update a goal"
 
@@ -265,12 +272,16 @@ instance ToSchema GoalResponse where
       NamedSchema (Just "GoalResponse") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("state", Inline $ toSchema (Proxy :: Proxy State))
-                          ]
-          & required .~ ["id", "name", "state"]
+          & properties
+            .~ IOHM.fromList
+              [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
+                ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("state", Inline $ toSchema (Proxy :: Proxy State)),
+                ("createdAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time"),
+                ("modifiedAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time")
+              ]
+          & required .~ ["id", "name", "state", "createdAt", "modifiedAt"]
           & S.description ?~ "Goal information"
 
 -- Users API types
@@ -280,8 +291,14 @@ instance ToSchema UserResponse where
       NamedSchema (Just "UserResponse") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [("id", Inline $ mempty & type_ ?~ SwaggerString), ("email", Inline $ mempty & type_ ?~ SwaggerString)]
-          & required .~ ["id", "email"]
+          & properties
+            .~ IOHM.fromList
+              [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
+                ("email", Inline $ mempty & type_ ?~ SwaggerString),
+                ("createdAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time"),
+                ("modifiedAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time")
+              ]
+          & required .~ ["id", "email", "createdAt", "modifiedAt"]
           & S.description ?~ "User information"
 
 instance ToSchema CreateUserRequest where
@@ -319,15 +336,19 @@ instance ToSchema HabitView where
       NamedSchema (Just "HabitView") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("interval", Inline $ toSchema (Proxy :: Proxy Interval)),
-                            ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy HabitDeadline))
-                          ]
-          & required .~ ["id", "interval", "name", "sort", "rate", "deadline"]
+          & properties
+            .~ IOHM.fromList
+              [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
+                ("interval", Inline $ toSchema (Proxy :: Proxy Interval)),
+                ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy HabitDeadline)),
+                ("createdAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time"),
+                ("modifiedAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time")
+              ]
+          & required .~ ["id", "interval", "name", "sort", "rate", "deadline", "createdAt", "modifiedAt"]
           & S.description ?~ "Habit view with interval and deadline"
 
 instance ToSchema (CreateHabitRequest 'Daily) where
@@ -336,12 +357,14 @@ instance ToSchema (CreateHabitRequest 'Daily) where
       NamedSchema (Just "CreateHabitRequestDaily") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily)))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily)))
+              ]
           & required .~ ["name", "sort", "rate", "deadline"]
           & S.description ?~ "Request to create a daily habit"
 
@@ -351,12 +374,14 @@ instance ToSchema (CreateHabitRequest 'Weekly) where
       NamedSchema (Just "CreateHabitRequestWeekly") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly)))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly)))
+              ]
           & required .~ ["name", "sort", "rate", "deadline"]
           & S.description ?~ "Request to create a weekly habit"
 
@@ -366,12 +391,14 @@ instance ToSchema (UpdateHabitRequest 'Daily) where
       NamedSchema (Just "UpdateHabitRequestDaily") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily)))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily)))
+              ]
           & required .~ ["name", "sort", "rate", "deadline"]
           & S.description ?~ "Request to update a daily habit"
 
@@ -381,12 +408,14 @@ instance ToSchema (UpdateHabitRequest 'Weekly) where
       NamedSchema (Just "UpdateHabitRequestWeekly") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly)))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly)))
+              ]
           & required .~ ["name", "sort", "rate", "deadline"]
           & S.description ?~ "Request to update a weekly habit"
 
@@ -396,14 +425,18 @@ instance ToSchema (HabitResponse 'Daily) where
       NamedSchema (Just "HabitResponseDaily") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily)))
-                          ]
-          & required .~ ["id", "name", "sort", "rate", "deadline"]
+          & properties
+            .~ IOHM.fromList
+              [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
+                ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily))),
+                ("createdAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time"),
+                ("modifiedAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time")
+              ]
+          & required .~ ["id", "name", "sort", "rate", "deadline", "createdAt", "modifiedAt"]
           & S.description ?~ "Daily habit response"
 
 instance ToSchema (HabitResponse 'Weekly) where
@@ -412,14 +445,18 @@ instance ToSchema (HabitResponse 'Weekly) where
       NamedSchema (Just "HabitResponseWeekly") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly)))
-                          ]
-          & required .~ ["id", "name", "sort", "rate", "deadline"]
+          & properties
+            .~ IOHM.fromList
+              [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
+                ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("sort", Inline $ toSchema (Proxy :: Proxy Sort)),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly))),
+                ("createdAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time"),
+                ("modifiedAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time")
+              ]
+          & required .~ ["id", "name", "sort", "rate", "deadline", "createdAt", "modifiedAt"]
           & S.description ?~ "Weekly habit response"
 
 -- Intentions API types
@@ -437,14 +474,18 @@ instance ToSchema IntentionView where
       NamedSchema (Just "IntentionView") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("interval", Inline $ toSchema (Proxy :: Proxy Interval)),
-                            ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy IntentionDeadline))
-                          ]
-          & required .~ ["id", "interval", "name", "rate", "deadline"]
+          & properties
+            .~ IOHM.fromList
+              [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
+                ("interval", Inline $ toSchema (Proxy :: Proxy Interval)),
+                ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy IntentionDeadline)),
+                ("createdAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time"),
+                ("modifiedAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time")
+              ]
+          & required .~ ["id", "interval", "name", "rate", "deadline", "createdAt", "modifiedAt"]
           & S.description ?~ "Intention view with interval and deadline"
 
 instance ToSchema (CreateIntentionRequest 'Daily) where
@@ -453,11 +494,13 @@ instance ToSchema (CreateIntentionRequest 'Daily) where
       NamedSchema (Just "CreateIntentionRequestDaily") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily)))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily)))
+              ]
           & required .~ ["name", "rate", "deadline"]
           & S.description ?~ "Request to create a daily intention"
 
@@ -467,11 +510,13 @@ instance ToSchema (CreateIntentionRequest 'Weekly) where
       NamedSchema (Just "CreateIntentionRequestWeekly") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly)))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly)))
+              ]
           & required .~ ["name", "rate", "deadline"]
           & S.description ?~ "Request to create a weekly intention"
 
@@ -481,11 +526,13 @@ instance ToSchema (UpdateIntentionRequest 'Daily) where
       NamedSchema (Just "UpdateIntentionRequestDaily") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily)))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily)))
+              ]
           & required .~ ["name", "rate", "deadline"]
           & S.description ?~ "Request to update a daily intention"
 
@@ -495,11 +542,13 @@ instance ToSchema (UpdateIntentionRequest 'Weekly) where
       NamedSchema (Just "UpdateIntentionRequestWeekly") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly)))
-                          ]
+          & properties
+            .~ IOHM.fromList
+              [ ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly)))
+              ]
           & required .~ ["name", "rate", "deadline"]
           & S.description ?~ "Request to update a weekly intention"
 
@@ -509,13 +558,17 @@ instance ToSchema (IntentionResponse 'Daily) where
       NamedSchema (Just "IntentionResponseDaily") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily)))
-                          ]
-          & required .~ ["id", "name", "rate", "deadline"]
+          & properties
+            .~ IOHM.fromList
+              [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
+                ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Daily))),
+                ("createdAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time"),
+                ("modifiedAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time")
+              ]
+          & required .~ ["id", "name", "rate", "deadline", "createdAt", "modifiedAt"]
           & S.description ?~ "Daily intention response"
 
 instance ToSchema (IntentionResponse 'Weekly) where
@@ -524,11 +577,15 @@ instance ToSchema (IntentionResponse 'Weekly) where
       NamedSchema (Just "IntentionResponseWeekly") $
         mempty
           & type_ ?~ SwaggerObject
-          & properties .~ IOHM.fromList [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("name", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("description", Inline $ mempty & type_ ?~ SwaggerString),
-                            ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
-                            ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly)))
-                          ]
-          & required .~ ["id", "name", "rate", "deadline"]
+          & properties
+            .~ IOHM.fromList
+              [ ("id", Inline $ mempty & type_ ?~ SwaggerString),
+                ("name", Inline $ mempty & type_ ?~ SwaggerString),
+                ("description", Inline $ mempty & type_ ?~ SwaggerString),
+                ("rate", Inline $ toSchema (Proxy :: Proxy Fraction)),
+                ("deadline", Inline $ toSchema (Proxy :: Proxy (Deadline 'Weekly))),
+                ("createdAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time"),
+                ("modifiedAt", Inline $ mempty & type_ ?~ SwaggerString & format ?~ "date-time")
+              ]
+          & required .~ ["id", "name", "rate", "deadline", "createdAt", "modifiedAt"]
           & S.description ?~ "Weekly intention response"

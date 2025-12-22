@@ -13,6 +13,7 @@ module HIT.Types.Intention
 where
 
 import Data.Text (Text)
+import Data.Time (UTCTime)
 import Data.Typeable (Typeable)
 import Data.UUID (UUID)
 import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
@@ -31,7 +32,9 @@ data IntentionT (p :: Interval) f = Intention
     description :: Columnar f (Maybe Text),
     interval :: Columnar f Interval,
     rate :: Columnar f Fraction,
-    deadline :: Columnar f (Deadline p)
+    deadline :: Columnar f (Deadline p),
+    createdAt :: Columnar f UTCTime,
+    modifiedAt :: Columnar f UTCTime
   }
   deriving (Generic)
 
@@ -45,7 +48,7 @@ instance Beamable (IntentionT p)
 
 instance (Typeable p) => Table (IntentionT p) where
   data PrimaryKey (IntentionT p) f = IntentionId (Columnar f UUID) deriving (Generic)
-  primaryKey (Intention iid _ _ _ _ _ _) = IntentionId iid
+  primaryKey (Intention iid _ _ _ _ _ _ _ _) = IntentionId iid
 
 deriving instance Show (PrimaryKey (IntentionT p) Identity)
 

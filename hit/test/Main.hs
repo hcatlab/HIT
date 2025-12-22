@@ -1,7 +1,7 @@
 module Main where
 
-import ApiSpec qualified as ApiSpec (tests)
-import EncodeDecode qualified as EncodeDecode (tests)
+import ApiSpec qualified (tests)
+import EncodeDecode qualified (tests)
 import Test.Tasty (defaultMain, testGroup)
 
 main :: IO ()

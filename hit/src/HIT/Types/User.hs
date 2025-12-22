@@ -1,10 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -20,6 +18,7 @@ where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
+import Data.Time (UTCTime)
 import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
 import Deriving.Aeson (CustomJSON (..), UnwrapUnaryRecords)
 import GHC.Generics (Generic)
@@ -33,7 +32,9 @@ data UserT f = User
   { id :: Columnar f Text,
     email :: Columnar f Text,
     passwordHash :: Columnar f Text,
-    apiToken :: Columnar f Text
+    apiToken :: Columnar f Text,
+    createdAt :: Columnar f UTCTime,
+    modifiedAt :: Columnar f UTCTime
   }
   deriving (Generic)
 
@@ -47,7 +48,7 @@ instance Beamable UserT
 
 instance Table UserT where
   data PrimaryKey UserT f = UserId (Columnar f Text) deriving (Generic)
-  primaryKey (User i _ _ _) = UserId i
+  primaryKey (User i _ _ _ _ _) = UserId i
 
 deriving instance Show (PrimaryKey UserT Identity)
 
@@ -63,4 +64,4 @@ data PublicUser = PublicUser
   deriving anyclass (ToJSON, FromJSON)
 
 toPublicUser :: User -> PublicUser
-toPublicUser (User u e _ _) = PublicUser u e
+toPublicUser (User u e _ _ _ _) = PublicUser u e

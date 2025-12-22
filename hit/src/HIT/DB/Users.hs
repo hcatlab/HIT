@@ -19,6 +19,7 @@ import Crypto.BCrypt (hashPasswordUsingPolicy, slowerBcryptHashingPolicy, valida
 import Data.ByteString.Char8 qualified as BS8
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
+import Data.Time (UTCTime, getCurrentTime)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam
@@ -30,7 +31,7 @@ import HIT.Types.User (ApiToken (..), User, UserT (..))
 import HIT.Types.User qualified as User (UserT (..))
 
 seedUser :: Connection -> User -> IO ()
-seedUser conn u@(User uid uemail _ utoken) = do
+seedUser conn (User uid uemail upw utoken createdAt modifiedAt) = do
   mExisting <-
     runBeamPostgres conn $
       runSelectReturningOne $
@@ -52,13 +53,14 @@ seedUser conn u@(User uid uemail _ utoken) = do
       runBeamPostgres conn $
         runInsert $
           insert (users hitDb) $
-            insertValues [u]
+            insertValues [User uid uemail upw utoken createdAt modifiedAt]
 
 createUser :: Connection -> Text -> Text -> Text -> IO (Either Text User)
 createUser conn username_ email_ password_ = do
   tok <- newToken
   pwHash <- hashPasswordText password_
-  let u = User username_ email_ pwHash tok
+  now <- getCurrentTime
+  let u = User username_ email_ pwHash tok now now
   ( Right <$> do
       runBeamPostgres conn $
         runInsert $
@@ -77,7 +79,7 @@ loginUser conn uname password_ = do
   mUser <- lookupUserById conn uname
   case mUser of
     Nothing -> pure Nothing
-    Just u@(User _ _ pwHash _) -> do
+    Just u@(User _ _ pwHash _ createdAt modifiedAt) -> do
       let ok =
             validatePassword
               (Text.encodeUtf8 pwHash)
@@ -119,14 +121,15 @@ updateUserEmail conn uid newEmail = do
   mExisting <- lookupUserById conn uid
   case mExisting of
     Nothing -> pure Nothing
-    Just (User _ _ pwHash tok) -> do
+    Just (User _ _ pwHash tok createdAtOld _) -> do
+      now <- getCurrentTime
       runBeamPostgres conn $
         runUpdate $
           update
             (users hitDb)
-            (\u -> email u <-. val_ newEmail)
+            (\u -> mconcat [email u <-. val_ newEmail, modifiedAt u <-. val_ now])
             (\u -> User.id u ==. val_ uid)
-      pure (Just (User uid newEmail pwHash tok))
+      pure (Just (User uid newEmail pwHash tok createdAtOld now))
 
 deleteUserById :: Connection -> Text -> IO Bool
 deleteUserById conn uid = do

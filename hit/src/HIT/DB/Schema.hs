@@ -93,6 +93,8 @@ hitDb =
                   (fieldNamed "email")
                   (fieldNamed "password_hash")
                   (fieldNamed "api_token")
+                  (fieldNamed "created_at")
+                  (fieldNamed "modified_at")
               ),
         goals =
           setEntityName "goals"
@@ -102,6 +104,8 @@ hitDb =
                   (UserId (fieldNamed "user"))
                   (fieldNamed "name")
                   (fieldNamed "description")
+                  (fieldNamed "created_at")
+                  (fieldNamed "modified_at")
               ),
         habitsDaily = habitTableSettings,
         habitsWeekly = habitTableSettings,
@@ -137,6 +141,8 @@ habitTableSettings =
           (fieldNamed "sort")
           (fieldNamed "rate")
           (fieldNamed "deadline")
+          (fieldNamed "created_at")
+          (fieldNamed "modified_at")
       )
 
 -- Shared table configuration for daily/weekly intentions stored in one physical table
@@ -152,4 +158,6 @@ intentionTableSettings =
           (fieldNamed "interval")
           (fieldNamed "rate")
           (fieldNamed "deadline")
+          (fieldNamed "created_at")
+          (fieldNamed "modified_at")
       )

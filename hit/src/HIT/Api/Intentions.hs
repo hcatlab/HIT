@@ -12,6 +12,7 @@ import Control.Applicative ((<|>))
 import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.!=), (.:), (.:?), (.=))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
+import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import HIT.Types.Deadline (Deadline)
 import HIT.Types.Fraction (Fraction)
@@ -69,7 +70,9 @@ data IntentionResponse (p :: Interval) = IntentionResponse
     description :: Maybe Text,
     rate :: Fraction,
     deadline :: Deadline p,
-    goalIds :: [Text]
+    goalIds :: [Text],
+    createdAt :: UTCTime,
+    modifiedAt :: UTCTime
   }
   deriving (Show, Eq, Generic)
 
@@ -92,7 +95,9 @@ data IntentionView = IntentionView
     description :: Maybe Text,
     rate :: Fraction,
     deadline :: IntentionDeadline,
-    goalIds :: [Text]
+    goalIds :: [Text],
+    createdAt :: UTCTime,
+    modifiedAt :: UTCTime
   }
   deriving (Show, Eq, Generic)
 
@@ -104,13 +109,15 @@ instance FromJSON IntentionDeadline where
   parseJSON v = (DailyIntentionDeadline <$> parseJSON v) <|> (WeeklyIntentionDeadline <$> parseJSON v)
 
 instance ToJSON IntentionView where
-  toJSON (IntentionView iid hint name desc rate deadlineVal goalIds) =
+  toJSON (IntentionView iid hint name desc rate deadlineVal goalIds createdAt modifiedAt) =
     let baseFields =
           [ "id" .= iid,
             "interval" .= hint,
             "name" .= name,
             "description" .= desc,
-            "rate" .= rate
+            "rate" .= rate,
+            "createdAt" .= createdAt,
+            "modifiedAt" .= modifiedAt
           ]
         deadlineField = case (hint, deadlineVal) of
           (Daily, DailyIntentionDeadline d) -> ["deadline" .= d]
@@ -131,4 +138,6 @@ instance FromJSON IntentionView where
         Daily -> DailyIntentionDeadline <$> o .: "deadline"
         Weekly -> WeeklyIntentionDeadline <$> o .: "deadline"
       goalIds <- o .:? "goalIds" .!= []
-      pure (IntentionView iid hint name desc rate deadlineVal goalIds)
+      createdAt <- o .: "createdAt"
+      modifiedAt <- o .: "modifiedAt"
+      pure (IntentionView iid hint name desc rate deadlineVal goalIds createdAt modifiedAt)

@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
@@ -9,6 +8,7 @@ module HIT.Api.Users where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
+import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import Servant
 
@@ -32,9 +32,7 @@ instance ToJSON CreateUserRequest
 
 instance FromJSON CreateUserRequest
 
-data UpdateUserRequest = UpdateUserRequest
-  { email :: Text
-  }
+newtype UpdateUserRequest = UpdateUserRequest {email :: Text}
   deriving (Show, Eq, Generic)
 
 instance ToJSON UpdateUserRequest
@@ -43,7 +41,9 @@ instance FromJSON UpdateUserRequest
 
 data UserResponse = UserResponse
   { id :: Text,
-    email :: Text
+    email :: Text,
+    createdAt :: UTCTime,
+    modifiedAt :: UTCTime
   }
   deriving (Show, Eq, Generic)
 

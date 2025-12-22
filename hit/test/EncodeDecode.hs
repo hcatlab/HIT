@@ -14,6 +14,7 @@ import Data.ByteString.Lazy.UTF8 qualified as LBU
 import Data.Containers.ListUtils (nubInt)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
+import Data.Time (UTCTime)
 import HIT.Api.Habits
   ( CreateHabitRequest (..),
     HabitDeadline (..),
@@ -125,6 +126,10 @@ instance Arbitrary HabitDeadline where
       Weekly -> WeeklyDeadline <$> arbitrary
 
 -- Habit view (unified list)
+
+instance Arbitrary UTCTime where
+  arbitrary = pure (read "2023-01-01 00:00:00 UTC")
+
 instance Arbitrary HabitView where
   arbitrary = do
     interval <- arbitrary :: Gen Interval
@@ -132,6 +137,8 @@ instance Arbitrary HabitView where
       Daily -> DailyDeadline <$> arbitrary
       Weekly -> WeeklyDeadline <$> arbitrary
     goals <- arbitrary :: Gen [Text]
+    createdAt <- arbitrary
+    modifiedAt <- arbitrary
     HabitView
       <$> arbitrary -- id
       <*> pure interval
@@ -141,6 +148,8 @@ instance Arbitrary HabitView where
       <*> arbitrary -- rate
       <*> pure deadline
       <*> pure goals
+      <*> pure createdAt
+      <*> pure modifiedAt
 
 -- Habit CRUD payloads and responses (p-parameterized)
 instance Arbitrary (CreateHabitRequest 'Daily) where
@@ -156,10 +165,10 @@ instance Arbitrary (UpdateHabitRequest 'Weekly) where
   arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> nonEmptyTextGen
 
 instance Arbitrary (HabitResponse 'Daily) where
-  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> (arbitrary :: Gen [Text])
+  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> (arbitrary :: Gen [Text]) <*> arbitrary <*> arbitrary
 
 instance Arbitrary (HabitResponse 'Weekly) where
-  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> (arbitrary :: Gen [Text])
+  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> (arbitrary :: Gen [Text]) <*> arbitrary <*> arbitrary
 
 -- Intentions arbitrary instances for API payloads
 instance Arbitrary IntentionDeadline where
@@ -177,6 +186,8 @@ instance Arbitrary IntentionView where
       Daily -> DailyIntentionDeadline <$> arbitrary
       Weekly -> WeeklyIntentionDeadline <$> arbitrary
     goals <- arbitrary :: Gen [Text]
+    createdAt <- arbitrary
+    modifiedAt <- arbitrary
     IntentionView
       <$> arbitrary -- id
       <*> pure interval
@@ -185,6 +196,8 @@ instance Arbitrary IntentionView where
       <*> arbitrary -- rate
       <*> pure deadline
       <*> pure goals
+      <*> pure createdAt
+      <*> pure modifiedAt
 
 -- Intention CRUD payloads and responses (p-parameterized)
 instance Arbitrary (CreateIntentionRequest 'Daily) where
@@ -200,10 +213,10 @@ instance Arbitrary (UpdateIntentionRequest 'Weekly) where
   arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> nonEmptyTextGen
 
 instance Arbitrary (IntentionResponse 'Daily) where
-  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> (arbitrary :: Gen [Text])
+  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> (arbitrary :: Gen [Text]) <*> arbitrary <*> arbitrary
 
 instance Arbitrary (IntentionResponse 'Weekly) where
-  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> (arbitrary :: Gen [Text])
+  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> (arbitrary :: Gen [Text]) <*> arbitrary <*> arbitrary
 
 instance Arbitrary ApiToken where
   arbitrary = ApiToken <$> arbitrary

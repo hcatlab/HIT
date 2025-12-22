@@ -97,16 +97,16 @@ instance (HabitTableSelector p, IntervalTag p, DeadlineJson p) => CrudResource (
     deleteHabit @p Proxy conn (User.id u)
 
 toHabitViewDaily :: Habit.HabitT 'Daily Identity -> [UUID] -> HabitView
-toHabitViewDaily (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline) goalIds =
-  HabitView (UUID.toText hid) Daily hname hdesc hsort hrate (DailyDeadline hdeadline) (map UUID.toText goalIds)
+toHabitViewDaily (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline createdAt modifiedAt) goalIds =
+  HabitView (UUID.toText hid) Daily hname hdesc hsort hrate (DailyDeadline hdeadline) (map UUID.toText goalIds) createdAt modifiedAt
 
 toHabitViewWeekly :: Habit.HabitT 'Weekly Identity -> [UUID] -> HabitView
-toHabitViewWeekly (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline) goalIds =
-  HabitView (UUID.toText hid) Weekly hname hdesc hsort hrate (WeeklyDeadline hdeadline) (map UUID.toText goalIds)
+toHabitViewWeekly (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline createdAt modifiedAt) goalIds =
+  HabitView (UUID.toText hid) Weekly hname hdesc hsort hrate (WeeklyDeadline hdeadline) (map UUID.toText goalIds) createdAt modifiedAt
 
 toHabitResponseWithGoals :: (Habit.HabitT p Identity, [UUID]) -> HabitResponse p
-toHabitResponseWithGoals (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline, goalIds) =
-  HabitResponse (UUID.toText hid) hname hdesc hsort hrate hdeadline (map UUID.toText goalIds)
+toHabitResponseWithGoals (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline createdAt modifiedAt, goalIds) =
+  HabitResponse (UUID.toText hid) hname hdesc hsort hrate hdeadline (map UUID.toText goalIds) createdAt modifiedAt
 
 parseGoalIds :: NonEmpty Text -> IO (NonEmpty UUID)
 parseGoalIds ids = case traverse UUID.fromText ids of

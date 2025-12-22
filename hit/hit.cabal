@@ -124,6 +124,7 @@ test-suite hit-test
     , tasty-hspec           >=0.2
     , tasty-quickcheck      >=0.10
     , text                  >=1.2
+    , time                  >=1.9
     , unordered-containers  >=0.2
     , utf8-string           >=1.0
     , uuid                  >=1.3

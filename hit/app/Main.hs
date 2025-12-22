@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Main where
 
@@ -65,13 +64,13 @@ server conn = hitApi :<|> pure hitSwagger
 
     me user = pure (toPublicUser user)
 
-    goals user = goalsServer conn user
+    goals = goalsServer conn
 
-    users user = usersServer conn user
+    users = usersServer conn
 
-    habits user = habitsServer conn user
+    habits = habitsServer conn
 
-    intentions user = intentionsServer conn user
+    intentions = intentionsServer conn
 
 authHandler :: Connection -> AuthHandler Request User
 authHandler conn = mkAuthHandler $ \req -> do

@@ -18,6 +18,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
+import Data.Time (UTCTime, getCurrentTime)
 import Data.UUID (UUID)
 import Database.Beam
 import Database.Beam.Postgres (runBeamPostgres)
@@ -33,7 +34,8 @@ import HIT.Types.User (PrimaryKey (UserId))
 
 createIntention :: forall p. (IntentionTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> UUID -> Text -> Text -> Maybe Text -> Fraction -> Deadline p -> NonEmpty UUID -> IO (Intention p)
 createIntention conn intentionId uid iname idesc irate ideadline goalIds = do
-  let i = Intention intentionId (UserId uid) iname idesc (intervalVal (Proxy @p)) irate ideadline
+  now <- getCurrentTime
+  let i = Intention intentionId (UserId uid) iname idesc (intervalVal (Proxy @p)) irate ideadline now now
   runBeamPostgres conn $
     runInsert $
       insert (intentionTable @p hitDb) $
@@ -78,26 +80,25 @@ updateIntention conn uid intentionId iname idesc irate ideadline goalIds = do
   mExisting <- getIntention @p conn uid intentionId
   case mExisting of
     Nothing -> pure Nothing
-    Just _ -> do
-      runBeamPostgres
-        conn
-        ( runUpdate
-            ( update
-                (intentionTable @p hitDb)
-                ( \i ->
-                    mconcat
-                      [ Intention.name i <-. val_ iname,
-                        Intention.description i <-. val_ idesc,
-                        Intention.interval i <-. val_ (intervalVal (Proxy @p)),
-                        Intention.rate i <-. val_ irate,
-                        Intention.deadline i <-. val_ ideadline
-                      ]
-                )
-                (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
+    Just (Intention _ _ _ _ _ _ _ createdAtOld _) -> do
+      now <- getCurrentTime
+      runBeamPostgres conn $
+        runUpdate $
+          update
+            (intentionTable @p hitDb)
+            ( \i ->
+                mconcat
+                  [ Intention.name i <-. val_ iname,
+                    Intention.description i <-. val_ idesc,
+                    Intention.interval i <-. val_ (intervalVal (Proxy @p)),
+                    Intention.rate i <-. val_ irate,
+                    Intention.deadline i <-. val_ ideadline,
+                    Intention.modifiedAt i <-. val_ now
+                  ]
             )
-        )
+            (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
       replaceIntentionGoals conn intentionId goalIds
-      pure (Just (Intention intentionId (UserId uid) iname idesc (intervalVal (Proxy @p)) irate ideadline))
+      pure (Just (Intention intentionId (UserId uid) iname idesc (intervalVal (Proxy @p)) irate ideadline createdAtOld now))
 
 deleteIntention :: forall p. (IntentionTableSelector p, DeadlineJson p, IntervalTag p) => Proxy p -> Connection -> Text -> UUID -> IO Bool
 deleteIntention _ conn uid intentionId = do

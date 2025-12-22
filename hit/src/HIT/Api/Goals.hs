@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
@@ -9,6 +8,7 @@ module HIT.Api.Goals where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
+import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import Servant
 
@@ -44,7 +44,9 @@ instance FromJSON UpdateGoalRequest
 data GoalResponse = GoalResponse
   { id :: Text,
     name :: Text,
-    description :: Maybe Text
+    description :: Maybe Text,
+    createdAt :: UTCTime,
+    modifiedAt :: UTCTime
   }
   deriving (Show, Eq, Generic)
 
