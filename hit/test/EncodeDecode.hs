@@ -215,32 +215,35 @@ instance Arbitrary PublicUser where
 tests :: TestTree
 tests =
   testGroup
-    "Encode-Decode Tests for JSON instances"
-    [ testProperty "encodeDecode Fraction" (encodeDecode :: Fraction -> Property),
-      testProperty "decodeEncode Fraction" (decodeEncode :: LBS Fraction -> Property),
-      testProperty "encodeDecode Interval" (encodeDecode :: Interval -> Property),
-      testProperty "decodeEncode Interval" (decodeEncode :: LBS Interval -> Property),
-      testProperty "encodeDecode Hours" (encodeDecode :: Hours -> Property),
-      testProperty "encodeDecode Weekdays" (encodeDecode :: Weekdays -> Property),
-      testProperty "encodeDecode Deadline Daily" (encodeDecode :: Deadline Daily -> Property),
-      testProperty "encodeDecode Deadline Weekly" (encodeDecode :: Deadline Weekly -> Property),
-      testProperty "encodeDecode Sort" (encodeDecode :: Sort -> Property),
-      -- Habits unified list view and p-parameterized CRUD payloads
-      testProperty "encodeDecode HabitView" (encodeDecode :: HabitView -> Property),
-      testProperty "encodeDecode CreateHabitRequest Daily" (encodeDecode :: CreateHabitRequest 'Daily -> Property),
-      testProperty "encodeDecode CreateHabitRequest Weekly" (encodeDecode :: CreateHabitRequest 'Weekly -> Property),
-      testProperty "encodeDecode UpdateHabitRequest Daily" (encodeDecode :: UpdateHabitRequest 'Daily -> Property),
-      testProperty "encodeDecode UpdateHabitRequest Weekly" (encodeDecode :: UpdateHabitRequest 'Weekly -> Property),
-      testProperty "encodeDecode HabitResponse Daily" (encodeDecode :: HabitResponse 'Daily -> Property),
-      testProperty "encodeDecode HabitResponse Weekly" (encodeDecode :: HabitResponse 'Weekly -> Property),
-      -- Intentions unified list view and p-parameterized CRUD payloads
-      testProperty "encodeDecode IntentionView" (encodeDecode :: IntentionView -> Property),
-      testProperty "encodeDecode CreateIntentionRequest Daily" (encodeDecode :: CreateIntentionRequest 'Daily -> Property),
-      testProperty "encodeDecode CreateIntentionRequest Weekly" (encodeDecode :: CreateIntentionRequest 'Weekly -> Property),
-      testProperty "encodeDecode UpdateIntentionRequest Daily" (encodeDecode :: UpdateIntentionRequest 'Daily -> Property),
-      testProperty "encodeDecode UpdateIntentionRequest Weekly" (encodeDecode :: UpdateIntentionRequest 'Weekly -> Property),
-      testProperty "encodeDecode IntentionResponse Daily" (encodeDecode :: IntentionResponse 'Daily -> Property),
-      testProperty "encodeDecode IntentionResponse Weekly" (encodeDecode :: IntentionResponse 'Weekly -> Property),
-      testProperty "encodeDecode ApiToken" (encodeDecode :: ApiToken -> Property),
-      testProperty "encodeDecode PublicUser" (encodeDecode :: PublicUser -> Property)
+    "Property Tests"
+    [ testGroup
+        "Encode-Decode Tests for JSON instances"
+        [ testProperty "encodeDecode Fraction" (encodeDecode :: Fraction -> Property),
+          testProperty "decodeEncode Fraction" (decodeEncode :: LBS Fraction -> Property),
+          testProperty "encodeDecode Interval" (encodeDecode :: Interval -> Property),
+          testProperty "decodeEncode Interval" (decodeEncode :: LBS Interval -> Property),
+          testProperty "encodeDecode Hours" (encodeDecode :: Hours -> Property),
+          testProperty "encodeDecode Weekdays" (encodeDecode :: Weekdays -> Property),
+          testProperty "encodeDecode Deadline Daily" (encodeDecode :: Deadline Daily -> Property),
+          testProperty "encodeDecode Deadline Weekly" (encodeDecode :: Deadline Weekly -> Property),
+          testProperty "encodeDecode Sort" (encodeDecode :: Sort -> Property),
+          -- Habits unified list view and p-parameterized CRUD payloads
+          testProperty "encodeDecode HabitView" (encodeDecode :: HabitView -> Property),
+          testProperty "encodeDecode CreateHabitRequest Daily" (encodeDecode :: CreateHabitRequest 'Daily -> Property),
+          testProperty "encodeDecode CreateHabitRequest Weekly" (encodeDecode :: CreateHabitRequest 'Weekly -> Property),
+          testProperty "encodeDecode UpdateHabitRequest Daily" (encodeDecode :: UpdateHabitRequest 'Daily -> Property),
+          testProperty "encodeDecode UpdateHabitRequest Weekly" (encodeDecode :: UpdateHabitRequest 'Weekly -> Property),
+          testProperty "encodeDecode HabitResponse Daily" (encodeDecode :: HabitResponse 'Daily -> Property),
+          testProperty "encodeDecode HabitResponse Weekly" (encodeDecode :: HabitResponse 'Weekly -> Property),
+          -- Intentions unified list view and p-parameterized CRUD payloads
+          testProperty "encodeDecode IntentionView" (encodeDecode :: IntentionView -> Property),
+          testProperty "encodeDecode CreateIntentionRequest Daily" (encodeDecode :: CreateIntentionRequest 'Daily -> Property),
+          testProperty "encodeDecode CreateIntentionRequest Weekly" (encodeDecode :: CreateIntentionRequest 'Weekly -> Property),
+          testProperty "encodeDecode UpdateIntentionRequest Daily" (encodeDecode :: UpdateIntentionRequest 'Daily -> Property),
+          testProperty "encodeDecode UpdateIntentionRequest Weekly" (encodeDecode :: UpdateIntentionRequest 'Weekly -> Property),
+          testProperty "encodeDecode IntentionResponse Daily" (encodeDecode :: IntentionResponse 'Daily -> Property),
+          testProperty "encodeDecode IntentionResponse Weekly" (encodeDecode :: IntentionResponse 'Weekly -> Property),
+          testProperty "encodeDecode ApiToken" (encodeDecode :: ApiToken -> Property),
+          testProperty "encodeDecode PublicUser" (encodeDecode :: PublicUser -> Property)
+        ]
     ]

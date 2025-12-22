@@ -124,6 +124,7 @@ hitDb =
       }
 
 -- Shared table configuration for daily/weekly habits stored in one physical table
+habitTableSettings :: EntityModification (DatabaseEntity be db) be (TableEntity (HabitT p))
 habitTableSettings =
   setEntityName "habits"
     <> modifyTableFields
@@ -139,6 +140,7 @@ habitTableSettings =
       )
 
 -- Shared table configuration for daily/weekly intentions stored in one physical table
+intentionTableSettings :: EntityModification (DatabaseEntity be db) be (TableEntity (IntentionT p))
 intentionTableSettings =
   setEntityName "intentions"
     <> modifyTableFields

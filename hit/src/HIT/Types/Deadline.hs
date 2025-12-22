@@ -11,10 +11,11 @@ module HIT.Types.Deadline
     Weekdays (..),
     Deadline (..),
     DeadlineCodec (..),
+    DeadlineJson,
   )
 where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), eitherDecode, encode)
+import Data.Aeson (FromJSON (..), Result (..), ToJSON (..), Value, eitherDecode, encode, fromJSON)
 import Data.ByteString.Lazy qualified as LBS
 import Data.Kind (Type)
 import Data.Text (Text)
@@ -26,6 +27,9 @@ import Database.Beam.Postgres.Syntax (PgValueSyntax)
 import Deriving.Aeson (CustomJSON (..), UnwrapUnaryRecords)
 import GHC.Generics (Generic)
 import HIT.Types.Interval (Interval (Daily, Weekly))
+
+-- Shared constraint bundle for JSON codecs and DB storage
+type DeadlineJson p = (DeadlineCodec p, FromJSON (Deadline p), ToJSON (Deadline p))
 
 newtype Hours = Hours {getHours :: [Int]}
   deriving stock (Show, Eq, Generic)
@@ -78,11 +82,13 @@ instance DeadlineCodec 'Weekly where
       Right (wds :: Weekdays) -> Just (WeekHours wds)
       Left _ -> Nothing
 
--- Store Deadline as JSONB in PostgreSQL for better querying
-instance (DeadlineCodec p) => HasSqlValueSyntax PgValueSyntax (Deadline p) where
-  sqlValueSyntax = sqlValueSyntax . encodeDeadline
+-- Store Deadline as JSON in PostgreSQL
+instance (DeadlineCodec p, ToJSON (Deadline p)) => HasSqlValueSyntax PgValueSyntax (Deadline p) where
+  sqlValueSyntax = sqlValueSyntax . toJSON
 
-instance (DeadlineCodec p) => FromBackendRow Postgres (Deadline p) where
+instance (DeadlineCodec p, FromJSON (Deadline p)) => FromBackendRow Postgres (Deadline p) where
   fromBackendRow = do
-    t <- fromBackendRow @Postgres @Text
-    maybe (fail "Invalid deadline") pure (decodeDeadline t)
+    v <- fromBackendRow @Postgres @Value
+    case fromJSON v of
+      Success x -> pure x
+      Error e -> fail e

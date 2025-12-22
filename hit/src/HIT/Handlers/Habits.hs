@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module HIT.Handlers.Habits
   ( habitsServer,
@@ -19,7 +20,6 @@ import Data.UUID (UUID)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam (Identity)
-import Database.Beam.Postgres (PgJSON (..))
 import Database.PostgreSQL.Simple (Connection)
 import HIT.Api.Habits
   ( CreateHabitRequest (..),
@@ -35,12 +35,11 @@ import HIT.DB
     deleteHabit,
     ensureGoalsBelongToUser,
     getHabitWithGoals,
-    listHabitGoals,
     listHabitsWithGoals,
-    updateHabit
+    updateHabit,
   )
 import HIT.DB.Schema (HabitTableSelector)
-import HIT.Types.Deadline (DeadlineCodec)
+import HIT.Types.Deadline (DeadlineJson)
 import HIT.Types.Habit qualified as Habit (HabitT (..))
 import HIT.Types.Interval (Interval (Daily, Weekly), IntervalTag)
 import HIT.Types.User (User)
@@ -67,7 +66,7 @@ listHabitsHandler conn user mInterval = do
 
 newtype HabitsResource (p :: Interval) = HabitsResource Connection
 
-instance (HabitTableSelector p, IntervalTag p, DeadlineCodec p) => CrudResource (HabitsResource p) where
+instance (HabitTableSelector p, IntervalTag p, DeadlineJson p) => CrudResource (HabitsResource p) where
   type Label (HabitsResource p) = "habitId"
   type InternalId (HabitsResource p) = UUID
   type CreateReq (HabitsResource p) = CreateHabitRequest p
@@ -98,15 +97,15 @@ instance (HabitTableSelector p, IntervalTag p, DeadlineCodec p) => CrudResource 
     deleteHabit @p Proxy conn (User.id u)
 
 toHabitViewDaily :: Habit.HabitT 'Daily Identity -> [UUID] -> HabitView
-toHabitViewDaily (Habit.Habit hid _ hname hdesc _ (PgJSON hsort) (PgJSON hrate) hdeadline) goalIds =
+toHabitViewDaily (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline) goalIds =
   HabitView (UUID.toText hid) Daily hname hdesc hsort hrate (DailyDeadline hdeadline) (map UUID.toText goalIds)
 
 toHabitViewWeekly :: Habit.HabitT 'Weekly Identity -> [UUID] -> HabitView
-toHabitViewWeekly (Habit.Habit hid _ hname hdesc _ (PgJSON hsort) (PgJSON hrate) hdeadline) goalIds =
+toHabitViewWeekly (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline) goalIds =
   HabitView (UUID.toText hid) Weekly hname hdesc hsort hrate (WeeklyDeadline hdeadline) (map UUID.toText goalIds)
 
 toHabitResponseWithGoals :: (Habit.HabitT p Identity, [UUID]) -> HabitResponse p
-toHabitResponseWithGoals (Habit.Habit hid _ hname hdesc _ (PgJSON hsort) (PgJSON hrate) hdeadline, goalIds) =
+toHabitResponseWithGoals (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline, goalIds) =
   HabitResponse (UUID.toText hid) hname hdesc hsort hrate hdeadline (map UUID.toText goalIds)
 
 parseGoalIds :: NonEmpty Text -> IO (NonEmpty UUID)

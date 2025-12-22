@@ -3,8 +3,12 @@ module HIT.Types.Fraction
   )
 where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), Value (String))
+import Data.Aeson (FromJSON (..), Result (..), ToJSON (..), Value (String), fromJSON, toJSON)
 import Data.Text qualified as T
+import Database.Beam (FromBackendRow (..))
+import Database.Beam.Backend.SQL (HasSqlValueSyntax (..))
+import Database.Beam.Postgres (Postgres)
+import Database.Beam.Postgres.Syntax (PgValueSyntax)
 import GHC.Generics (Generic)
 
 data Fraction = Fraction
@@ -27,3 +31,13 @@ instance FromJSON Fraction where
         return $ Fraction n d
       _ -> fail "Invalid Fraction format"
   parseJSON _ = fail "Fraction must be a string"
+
+instance HasSqlValueSyntax PgValueSyntax Fraction where
+  sqlValueSyntax = sqlValueSyntax . toJSON
+
+instance FromBackendRow Postgres Fraction where
+  fromBackendRow = do
+    v <- fromBackendRow @Postgres @Value
+    case fromJSON v of
+      Success x -> pure x
+      Error e -> fail e

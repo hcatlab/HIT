@@ -21,10 +21,10 @@ import Data.Proxy (Proxy (..))
 import Data.Text (Text)
 import Data.UUID (UUID)
 import Database.Beam
-import Database.Beam.Postgres (PgJSON (..), runBeamPostgres)
+import Database.Beam.Postgres (runBeamPostgres)
 import Database.PostgreSQL.Simple (Connection)
 import HIT.DB.Schema (HabitGoalT (..), HabitTableSelector (..), goals, habitGoals, hitDb)
-import HIT.Types.Deadline (Deadline, DeadlineCodec)
+import HIT.Types.Deadline (Deadline, DeadlineJson)
 import HIT.Types.Fraction (Fraction)
 import HIT.Types.Goal qualified as Goal
 import HIT.Types.Habit (Habit, HabitT (..))
@@ -33,9 +33,9 @@ import HIT.Types.Interval (IntervalTag (..))
 import HIT.Types.Sort (Sort)
 import HIT.Types.User (PrimaryKey (UserId))
 
-createHabit :: forall p. (HabitTableSelector p, DeadlineCodec p, IntervalTag p) => Connection -> UUID -> Text -> Text -> Maybe Text -> Sort -> Fraction -> Deadline p -> NonEmpty UUID -> IO (Habit p)
+createHabit :: forall p. (HabitTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> UUID -> Text -> Text -> Maybe Text -> Sort -> Fraction -> Deadline p -> NonEmpty UUID -> IO (Habit p)
 createHabit conn habitId uid hname hdesc hsort hrate hdeadline goalIds = do
-  let h = Habit habitId (UserId uid) hname hdesc (intervalVal (Proxy @p)) (PgJSON hsort) (PgJSON hrate) hdeadline
+  let h = Habit habitId (UserId uid) hname hdesc (intervalVal (Proxy @p)) hsort hrate hdeadline
   runBeamPostgres conn $
     runInsert $
       insert (habitTable @p hitDb) $
@@ -43,7 +43,7 @@ createHabit conn habitId uid hname hdesc hsort hrate hdeadline goalIds = do
   insertHabitGoals conn habitId goalIds
   pure h
 
-getHabit :: forall p. (HabitTableSelector p, DeadlineCodec p, IntervalTag p) => Connection -> Text -> UUID -> IO (Maybe (Habit p))
+getHabit :: forall p. (HabitTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> Text -> UUID -> IO (Maybe (Habit p))
 getHabit conn uid habitId =
   runBeamPostgres conn $
     runSelectReturningOne $
@@ -52,7 +52,7 @@ getHabit conn uid habitId =
         guard_ (Habit.id h ==. val_ habitId &&. Habit.user h ==. UserId (val_ uid) &&. Habit.interval h ==. val_ (intervalVal (Proxy @p)))
         pure h
 
-getHabitWithGoals :: forall p. (HabitTableSelector p, DeadlineCodec p, IntervalTag p) => Connection -> Text -> UUID -> IO (Maybe (Habit p, [UUID]))
+getHabitWithGoals :: forall p. (HabitTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> Text -> UUID -> IO (Maybe (Habit p, [UUID]))
 getHabitWithGoals conn uid habitId = do
   mHabit <- getHabit @p conn uid habitId
   case mHabit of
@@ -61,7 +61,7 @@ getHabitWithGoals conn uid habitId = do
       goals <- listHabitGoals conn uid habitId
       pure (Just (h, goals))
 
-listHabits :: forall p. (HabitTableSelector p, DeadlineCodec p, IntervalTag p) => Connection -> Text -> IO [Habit p]
+listHabits :: forall p. (HabitTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> Text -> IO [Habit p]
 listHabits conn uid =
   runBeamPostgres conn $
     runSelectReturningList $
@@ -70,12 +70,12 @@ listHabits conn uid =
         guard_ (Habit.user h ==. UserId (val_ uid) &&. Habit.interval h ==. val_ (intervalVal (Proxy @p)))
         pure h
 
-listHabitsWithGoals :: forall p. (HabitTableSelector p, DeadlineCodec p, IntervalTag p) => Connection -> Text -> IO [(Habit p, [UUID])]
+listHabitsWithGoals :: forall p. (HabitTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> Text -> IO [(Habit p, [UUID])]
 listHabitsWithGoals conn uid = do
   hs <- listHabits @p conn uid
   mapM (\t -> (t,) <$> listHabitGoals conn uid (Habit.id t)) hs
 
-updateHabit :: forall p. (HabitTableSelector p, DeadlineCodec p, IntervalTag p) => Connection -> Text -> UUID -> Text -> Maybe Text -> Sort -> Fraction -> Deadline p -> NonEmpty UUID -> IO (Maybe (Habit p))
+updateHabit :: forall p. (HabitTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> Text -> UUID -> Text -> Maybe Text -> Sort -> Fraction -> Deadline p -> NonEmpty UUID -> IO (Maybe (Habit p))
 updateHabit conn uid habitId hname hdesc hsort hrate hdeadline goalIds = do
   mExisting <- getHabit @p conn uid habitId
   case mExisting of
@@ -91,8 +91,8 @@ updateHabit conn uid habitId hname hdesc hsort hrate hdeadline goalIds = do
                       [ Habit.name h <-. val_ hname,
                         Habit.description h <-. val_ hdesc,
                         Habit.interval h <-. val_ (intervalVal (Proxy @p)),
-                        Habit.sort h <-. val_ (PgJSON hsort),
-                        Habit.rate h <-. val_ (PgJSON hrate),
+                        Habit.sort h <-. val_ hsort,
+                        Habit.rate h <-. val_ hrate,
                         Habit.deadline h <-. val_ hdeadline
                       ]
                 )
@@ -100,9 +100,9 @@ updateHabit conn uid habitId hname hdesc hsort hrate hdeadline goalIds = do
             )
         )
       replaceHabitGoals conn habitId goalIds
-      pure (Just (Habit habitId (UserId uid) hname hdesc (intervalVal (Proxy @p)) (PgJSON hsort) (PgJSON hrate) hdeadline))
+      pure (Just (Habit habitId (UserId uid) hname hdesc (intervalVal (Proxy @p)) hsort hrate hdeadline))
 
-deleteHabit :: forall p. (HabitTableSelector p, DeadlineCodec p, IntervalTag p) => Proxy p -> Connection -> Text -> UUID -> IO Bool
+deleteHabit :: forall p. (HabitTableSelector p, DeadlineJson p, IntervalTag p) => Proxy p -> Connection -> Text -> UUID -> IO Bool
 deleteHabit _ conn uid habitId = do
   mExisting <- getHabit @p conn uid habitId
   case mExisting of

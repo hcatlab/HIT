@@ -63,12 +63,12 @@ initDb conn = do
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createUsersSql))
 
-  -- Create goals table
+  -- Create goals table (uuid ids)
   let createGoalsSql :: Text
       createGoalsSql =
         T.unlines
           [ "CREATE TABLE IF NOT EXISTS goals (",
-            "  id TEXT PRIMARY KEY,",
+            "  id UUID PRIMARY KEY,",
             "  \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,",
             "  name TEXT NOT NULL,",
             "  description TEXT",
@@ -76,37 +76,61 @@ initDb conn = do
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createGoalsSql))
 
-  -- Create unified habits table
+  -- Create unified habits table (uuid ids)
   let createHabitsSql :: Text
       createHabitsSql =
         T.unlines
           [ "CREATE TABLE IF NOT EXISTS habits (",
-            "  id TEXT PRIMARY KEY,",
+            "  id UUID PRIMARY KEY,",
             "  \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,",
             "  name TEXT NOT NULL,",
             "  description TEXT,",
-            "  interval interval_kind NOT NULL,",
-            "  sort JSONB NOT NULL,",
-            "  rate JSONB NOT NULL,",
-            "  deadline TEXT NOT NULL",
+            "  interval TEXT NOT NULL,",
+            "  sort JSON NOT NULL,",
+            "  rate JSON NOT NULL,",
+            "  deadline JSON NOT NULL",
             ")"
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createHabitsSql))
 
-  -- Create unified intentions table
+  -- Create goal_habits mapping table
+  let createGoalHabitsSql :: Text
+      createGoalHabitsSql =
+        T.unlines
+          [ "CREATE TABLE IF NOT EXISTS goal_habits (",
+            "  habit_id UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,",
+            "  goal_id UUID NOT NULL REFERENCES goals(id) ON DELETE CASCADE,",
+            "  PRIMARY KEY (habit_id, goal_id)",
+            ")"
+          ]
+  _ <- PG.execute_ conn (fromString (T.unpack createGoalHabitsSql))
+
+  -- Create unified intentions table (uuid ids)
   let createIntentionsSql :: Text
       createIntentionsSql =
         T.unlines
           [ "CREATE TABLE IF NOT EXISTS intentions (",
-            "  id TEXT PRIMARY KEY,",
+            "  id UUID PRIMARY KEY,",
             "  \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,",
             "  name TEXT NOT NULL,",
             "  description TEXT,",
-            "  interval interval_kind NOT NULL,",
-            "  rate JSONB NOT NULL,",
-            "  deadline TEXT NOT NULL",
+            "  interval TEXT NOT NULL,",
+            "  rate JSON NOT NULL,",
+            "  deadline JSON NOT NULL",
             ")"
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createIntentionsSql))
+
+  -- Create goal_intentions mapping table
+  let createGoalIntentionsSql :: Text
+      createGoalIntentionsSql =
+        T.unlines
+          [ "CREATE TABLE IF NOT EXISTS goal_intentions (",
+            "  intention_id UUID NOT NULL REFERENCES intentions(id) ON DELETE CASCADE,",
+            "  goal_id UUID NOT NULL REFERENCES goals(id) ON DELETE CASCADE,",
+            "  PRIMARY KEY (intention_id, goal_id)",
+            ")"
+          ]
+  _ <- PG.execute_ conn (fromString (T.unpack createGoalIntentionsSql))
 
   putStrLn "Database schema initialized successfully"

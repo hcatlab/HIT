@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module HIT.Handlers.Intentions
   ( intentionsServer,
@@ -19,7 +20,6 @@ import Data.UUID (UUID)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam (Identity)
-import Database.Beam.Postgres (PgJSON (..))
 import Database.PostgreSQL.Simple (Connection)
 import HIT.Api.Intentions
   ( CreateIntentionRequest (..),
@@ -39,7 +39,7 @@ import HIT.DB
     updateIntention,
   )
 import HIT.DB.Schema (IntentionTableSelector)
-import HIT.Types.Deadline (DeadlineCodec)
+import HIT.Types.Deadline (DeadlineJson)
 import HIT.Types.Intention qualified as Intention (IntentionT (..))
 import HIT.Types.Interval (Interval (Daily, Weekly), IntervalTag)
 import HIT.Types.User (User)
@@ -66,7 +66,7 @@ listIntentionsHandler conn user mInterval = do
 
 newtype IntentionsResource (p :: Interval) = IntentionsResource Connection
 
-instance (IntentionTableSelector p, IntervalTag p, DeadlineCodec p) => CrudResource (IntentionsResource p) where
+instance (IntentionTableSelector p, IntervalTag p, DeadlineJson p) => CrudResource (IntentionsResource p) where
   type Label (IntentionsResource p) = "intentionId"
   type InternalId (IntentionsResource p) = UUID
   type CreateReq (IntentionsResource p) = CreateIntentionRequest p
@@ -97,15 +97,15 @@ instance (IntentionTableSelector p, IntervalTag p, DeadlineCodec p) => CrudResou
     deleteIntention @p Proxy conn (User.id u)
 
 toIntentionViewDaily :: Intention.IntentionT 'Daily Identity -> [UUID] -> IntentionView
-toIntentionViewDaily (Intention.Intention iid _ iname idesc _ (PgJSON irate) ideadline) goalIds =
+toIntentionViewDaily (Intention.Intention iid _ iname idesc _ irate ideadline) goalIds =
   IntentionView (UUID.toText iid) Daily iname idesc irate (DailyIntentionDeadline ideadline) (map UUID.toText goalIds)
 
 toIntentionViewWeekly :: Intention.IntentionT 'Weekly Identity -> [UUID] -> IntentionView
-toIntentionViewWeekly (Intention.Intention iid _ iname idesc _ (PgJSON irate) ideadline) goalIds =
+toIntentionViewWeekly (Intention.Intention iid _ iname idesc _ irate ideadline) goalIds =
   IntentionView (UUID.toText iid) Weekly iname idesc irate (WeeklyIntentionDeadline ideadline) (map UUID.toText goalIds)
 
 toIntentionResponseWithGoals :: (Intention.IntentionT p Identity, [UUID]) -> IntentionResponse p
-toIntentionResponseWithGoals (Intention.Intention iid _ iname idesc _ (PgJSON irate) ideadline, goalIds) =
+toIntentionResponseWithGoals (Intention.Intention iid _ iname idesc _ irate ideadline, goalIds) =
   IntentionResponse (UUID.toText iid) iname idesc irate ideadline (map UUID.toText goalIds)
 
 parseGoalIds :: NonEmpty Text -> IO (NonEmpty UUID)

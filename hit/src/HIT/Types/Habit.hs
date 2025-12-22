@@ -16,7 +16,6 @@ import Data.Text (Text)
 import Data.Typeable (Typeable)
 import Data.UUID (UUID)
 import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
-import Database.Beam.Postgres (PgJSON (..))
 import GHC.Generics (Generic)
 import HIT.Types.Deadline (Deadline)
 import HIT.Types.Fraction (Fraction)
@@ -32,8 +31,8 @@ data HabitT (p :: Interval) f = Habit
     name :: Columnar f Text,
     description :: Columnar f (Maybe Text),
     interval :: Columnar f Interval,
-    sort :: Columnar f (PgJSON Sort),
-    rate :: Columnar f (PgJSON Fraction),
+    sort :: Columnar f Sort,
+    rate :: Columnar f Fraction,
     deadline :: Columnar f (Deadline p)
   }
   deriving (Generic)
