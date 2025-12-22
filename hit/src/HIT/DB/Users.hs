@@ -19,7 +19,7 @@ import Crypto.BCrypt (hashPasswordUsingPolicy, slowerBcryptHashingPolicy, valida
 import Data.ByteString.Char8 qualified as BS8
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
-import Data.Time (UTCTime, getCurrentTime)
+import Data.Time (getCurrentTime)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam
@@ -79,7 +79,7 @@ loginUser conn uname password_ = do
   mUser <- lookupUserById conn uname
   case mUser of
     Nothing -> pure Nothing
-    Just u@(User _ _ pwHash _ createdAt modifiedAt) -> do
+    Just u@(User _ _ pwHash _ _ _) -> do
       let ok =
             validatePassword
               (Text.encodeUtf8 pwHash)

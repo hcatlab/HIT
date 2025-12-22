@@ -1,8 +1,7 @@
 module Main where
 
-import Data.Aeson (FromJSON (..), (.:))
+import Data.Aeson (FromJSON (..))
 import Data.Aeson qualified as Aeson
-import Data.Aeson.Key qualified as Key
 import Data.ByteString.Lazy qualified as LBS
 import Network.HTTP.Client
   ( defaultManagerSettings,
@@ -36,13 +35,10 @@ main = do
 handleCommand :: Command -> IO ()
 handleCommand Health = checkHealth
 
-data HealthResponse = HealthResponse
+newtype HealthResponse = HealthResponse
   { status :: String
   }
-
-instance FromJSON HealthResponse where
-  parseJSON = Aeson.withObject "HealthResponse" $ \o ->
-    HealthResponse <$> o .: Key.fromString "status"
+  deriving (FromJSON)
 
 checkHealth :: IO ()
 checkHealth = do

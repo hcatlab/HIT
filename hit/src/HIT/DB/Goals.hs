@@ -10,7 +10,7 @@ module HIT.DB.Goals
 where
 
 import Data.Text (Text)
-import Data.Time (UTCTime, getCurrentTime)
+import Data.Time (getCurrentTime)
 import Data.UUID (UUID)
 import Database.Beam
 import Database.Beam.Postgres (runBeamPostgres)

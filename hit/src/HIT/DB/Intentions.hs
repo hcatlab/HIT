@@ -18,7 +18,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
-import Data.Time (UTCTime, getCurrentTime)
+import Data.Time (getCurrentTime)
 import Data.UUID (UUID)
 import Database.Beam
 import Database.Beam.Postgres (runBeamPostgres)
