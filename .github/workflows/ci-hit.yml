@@ -40,6 +40,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpq-dev
 
+      - name: Set up PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "CREATE USER hit WITH PASSWORD 'hit' CREATEDB;"
+          sudo -u postgres psql -c "CREATE DATABASE hit OWNER hit;"
+          sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE hit TO hit;"
+
       - name: Configure the build
         run: |
           cabal configure --enable-tests --enable-benchmarks --disable-documentation
@@ -72,6 +79,8 @@ jobs:
 
       - name: Test
         run: cabal test all
+        env:
+          DATABASE_URL: postgresql://hit:hit@localhost:5432/hit
 
   lint:
     name: Lint hit backend
