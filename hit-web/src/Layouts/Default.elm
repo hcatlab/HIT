@@ -1,11 +1,13 @@
 module Layouts.Default exposing (Model, Msg, Props, layout)
 
-import Components.Navbar
+import Components.Navbar exposing (NavItem)
 import Effect exposing (Effect)
 import Html
+import Html.Attributes
 import Layout exposing (Layout)
 import Route exposing (Route)
 import Shared
+import Shared.Msg as SharedMsg
 import View exposing (View)
 
 
@@ -14,11 +16,11 @@ type alias Props =
 
 
 layout : Props -> Shared.Model -> Route () -> Layout () Model Msg contentMsg
-layout _ _ _ =
+layout _ shared _ =
     Layout.new
         { init = init
         , update = update
-        , view = view
+        , view = view shared
         , subscriptions = subscriptions
         }
 
@@ -43,15 +45,18 @@ init _ =
 
 
 type Msg
-    = ReplaceMe
+    = Logout
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        ReplaceMe ->
+        Logout ->
             ( model
-            , Effect.none
+            , Effect.batch
+                [ Effect.sendShared SharedMsg.SignedOut
+                , Effect.clearAuth
+                ]
             )
 
 
@@ -64,8 +69,30 @@ subscriptions _ =
 -- VIEW
 
 
-view : { toContentMsg : Msg -> contentMsg, content : View contentMsg, model : Model } -> View contentMsg
-view { content } =
+view : Shared.Model -> { toContentMsg : Msg -> contentMsg, content : View contentMsg, model : Model } -> View contentMsg
+view shared { toContentMsg, content } =
+    let
+        navLink title href =
+            { title = title, href = Just href, onClick = Nothing }
+
+        navAction title msg =
+            { title = title, href = Nothing, onClick = Just msg }
+
+        navbarProps : { title : String, left : List (NavItem Msg), right : List (NavItem Msg) }
+        navbarProps =
+            case shared.user of
+                Just user ->
+                    { title = "HIT"
+                    , left = [ navLink "Goals" "/goals" ]
+                    , right = [ navLink user.id "/profile", navAction "Logout" Logout ]
+                    }
+
+                Nothing ->
+                    { title = "HIT"
+                    , left = []
+                    , right = [ navLink "Login" "/login", navLink "Sign up" "/signup" ]
+                    }
+    in
     { title =
         if String.isEmpty content.title then
             "HIT"
@@ -74,12 +101,23 @@ view { content } =
             content.title ++ " | HIT"
     , body =
         [ Html.header []
-            [ Components.Navbar.view { title = "HIT", items = [ { title = "Health", href = "/health" } ] }
+            [ Components.Navbar.view navbarProps
+                |> Html.map toContentMsg
             ]
         , Html.main_ [] content.body
         , Html.footer []
-            [ Html.small []
-                [ Html.text "© 2025 HIT - Habit and Intention Tracker" ]
+            [ Html.div [ Html.Attributes.class "footer-bar" ]
+                [ Html.div [ Html.Attributes.class "footer-left" ] []
+                , Html.div [ Html.Attributes.class "footer-center" ]
+                    [ Html.small [] [ Html.text "© 2025 HIT Authors" ] ]
+                , Html.div [ Html.Attributes.class "footer-right" ]
+                    [ Html.small []
+                        [ Html.a [ Html.Attributes.href "/health" ] [ Html.text "Health" ]
+                        , Html.text " "
+                        , Html.a [ Html.Attributes.href "https://github.com/DesyncTheThird/HIT" ] [ Html.text "Source" ]
+                        ]
+                    ]
+                ]
             ]
         ]
     }

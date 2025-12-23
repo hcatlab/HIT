@@ -39,17 +39,13 @@ init _ =
 -- UPDATE
 
 
-type Msg
-    = NoOp
+type alias Msg =
+    Never
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
-update msg model =
-    case msg of
-        NoOp ->
-            ( model
-            , Effect.none
-            )
+update msg _ =
+    never msg
 
 
 
@@ -66,7 +62,7 @@ subscriptions _ =
 
 
 view : Model -> View Msg
-view model =
+view _ =
     { title = "Home"
     , body = [ Html.text "Hello, World!" ]
     }

@@ -81,6 +81,7 @@ executable hit-server
     , base               >=4.18
     , bcrypt             >=0.0
     , bytestring         >=0.11
+    , containers         >=0.6
     , hit
     , http-types         >=0.12
     , postgresql-simple  >=0.6

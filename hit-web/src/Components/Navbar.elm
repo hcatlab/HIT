@@ -1,30 +1,54 @@
-module Components.Navbar exposing (..)
+module Components.Navbar exposing (NavItem, view)
 
 import Html exposing (..)
-import Html.Attributes exposing (href)
+import Html.Attributes as Attr
+import Html.Events exposing (onClick)
+
+
+type alias NavItem msg =
+    { title : String
+    , href : Maybe String
+    , onClick : Maybe msg
+    }
 
 
 view :
     { title : String
-    , items : List { title : String, href : String }
+    , left : List (NavItem msg)
+    , right : List (NavItem msg)
     }
     -> Html msg
 view props =
     Html.nav []
         [ Html.ul []
-            [ Html.li []
+            (Html.li []
                 [ Html.strong []
-                    [ Html.a [ href "/" ] [ Html.text props.title ]
+                    [ Html.a [ Attr.href "/" ] [ Html.text props.title ]
                     ]
                 ]
-            ]
-        , Html.ul []
-            (List.map
-                (\item ->
-                    Html.li []
-                        [ Html.a [ Html.Attributes.href item.href ] [ Html.text item.title ]
-                        ]
-                )
-                props.items
+                :: List.map navItem props.left
             )
+        , Html.ul [] (List.map navItem props.right)
+        ]
+
+
+navItem : NavItem msg -> Html msg
+navItem item =
+    let
+        attrs =
+            case ( item.href, item.onClick ) of
+                ( Just url, Just onClickMsg ) ->
+                    [ Attr.href url, onClick onClickMsg ]
+
+                ( Just url, Nothing ) ->
+                    [ Attr.href url ]
+
+                ( Nothing, Just onClickMsg ) ->
+                    [ onClick onClickMsg ]
+
+                ( Nothing, Nothing ) ->
+                    []
+    in
+    Html.li []
+        [ Html.a attrs [ Html.text item.title ]
         ]

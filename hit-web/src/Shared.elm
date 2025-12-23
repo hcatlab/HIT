@@ -12,6 +12,8 @@ module Shared exposing
 
 -}
 
+import Api.Auth
+import Dict
 import Effect exposing (Effect)
 import Json.Decode
 import Route exposing (Route)
@@ -25,12 +27,24 @@ import Shared.Msg
 
 
 type alias Flags =
-    {}
+    { token : Maybe String
+    , user : Maybe Api.Auth.User
+    }
 
 
 decoder : Json.Decode.Decoder Flags
 decoder =
-    Json.Decode.succeed {}
+    let
+        maybeUserDecoder : Json.Decode.Decoder (Maybe Api.Auth.User)
+        maybeUserDecoder =
+            Json.Decode.oneOf
+                [ Json.Decode.field "user" (Json.Decode.nullable Api.Auth.userDecoder)
+                , Json.Decode.succeed Nothing
+                ]
+    in
+    Json.Decode.map2 Flags
+        (Json.Decode.field "token" (Json.Decode.nullable Json.Decode.string))
+        maybeUserDecoder
 
 
 
@@ -42,10 +56,17 @@ type alias Model =
 
 
 init : Result Json.Decode.Error Flags -> Route () -> ( Model, Effect Msg )
-init flagsResult route =
-    ( {}
-    , Effect.none
-    )
+init flagsResult _ =
+    case flagsResult of
+        Ok flags ->
+            ( { user = flags.user, token = flags.token }
+            , Effect.none
+            )
+
+        Err _ ->
+            ( { user = Nothing, token = Nothing }
+            , Effect.none
+            )
 
 
 
@@ -57,11 +78,31 @@ type alias Msg =
 
 
 update : Route () -> Msg -> Model -> ( Model, Effect Msg )
-update route msg model =
+update _ msg model =
     case msg of
         Shared.Msg.NoOp ->
             ( model
             , Effect.none
+            )
+
+        Shared.Msg.SignedInUser authResponse ->
+            ( { user = Just authResponse.user
+              , token = Just authResponse.token
+              }
+            , Effect.batch
+                [ Effect.pushRoute { path = Route.Path.Goals, query = Dict.empty, hash = Nothing }
+                , Effect.saveAuth authResponse
+                ]
+            )
+
+        Shared.Msg.SignedOut ->
+            ( { user = Nothing
+              , token = Nothing
+              }
+            , Effect.batch
+                [ Effect.pushRoute { path = Route.Path.Login, query = Dict.empty, hash = Nothing }
+                , Effect.clearAuth
+                ]
             )
 
 
@@ -70,5 +111,5 @@ update route msg model =
 
 
 subscriptions : Route () -> Model -> Sub Msg
-subscriptions route model =
+subscriptions _ _ =
     Sub.none

@@ -2,6 +2,8 @@ module Shared.Msg exposing (Msg(..))
 
 {-| -}
 
+import Api.Auth
+
 
 {-| Normally, this value would live in "Shared.elm"
 but that would lead to a circular dependency import cycle.
@@ -12,3 +14,5 @@ own file, so they can be imported by `Effect.elm`
 -}
 type Msg
     = NoOp
+    | SignedInUser Api.Auth.AuthResponse
+    | SignedOut

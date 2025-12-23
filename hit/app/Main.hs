@@ -8,6 +8,7 @@ module Main where
 import Control.Applicative ((<|>))
 import Control.Monad.IO.Class (liftIO)
 import Data.ByteString qualified as BS
+import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy qualified as LBS
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
@@ -20,7 +21,11 @@ import HIT.Types.User (ApiToken (..), User, UserT (..), toPublicUser)
 import Network.HTTP.Types.Header (hAuthorization)
 import Network.Wai (Request, requestHeaders)
 import Network.Wai.Handler.Warp (run)
-import Network.Wai.Middleware.Cors (simpleCors)
+import Network.Wai.Middleware.Cors
+  ( CorsResourcePolicy (..),
+    cors,
+    simpleCorsResourcePolicy,
+  )
 import Network.Wai.Middleware.RequestLogger (logStdout)
 import Servant
 import Servant.Server.Experimental.Auth (AuthHandler, AuthServerData, mkAuthHandler)
@@ -38,11 +43,38 @@ type instance AuthServerData (AuthProtect "api-token") = User
 app :: Connection -> Application
 app conn =
   logStdout $
-    simpleCors $
+    cors corsPolicyForRequest $
       serveWithContext
         (Proxy :: Proxy HITApiWithSwagger)
         (authHandler conn :. EmptyContext)
         (server conn)
+
+-- | localhost/127.0.0.1/[::1] origin on any port
+corsPolicyForRequest :: Request -> Maybe CorsResourcePolicy
+corsPolicyForRequest req =
+  case lookup "Origin" (requestHeaders req) of
+    Just origin
+      | isLocalOrigin origin ->
+          Just
+            ( simpleCorsResourcePolicy
+                { corsOrigins = Just ([origin], True),
+                  corsMethods = ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+                  corsRequestHeaders = ["Authorization", "Content-Type"]
+                }
+            )
+    _ -> Nothing
+
+isLocalOrigin :: BS.ByteString -> Bool
+isLocalOrigin o =
+  any
+    (`BS.isPrefixOf` o)
+    [ "http://localhost",
+      "https://localhost",
+      "http://127.0.0.1",
+      "https://127.0.0.1",
+      "http://[::1]",
+      "https://[::1]"
+    ]
 
 server :: Connection -> Server HITApiWithSwagger
 server conn = hitApi :<|> pure hitSwagger
