@@ -1,37 +1,7 @@
-# Elm
-elm-stuff/
-elm.js
-index.js
-
-# Node
-node_modules/
-npm-debug.log
-yarn-error.log
-package-lock.json
-yarn.lock
-
-# Build
-dist/
-build/
-css/
-*.min.js
-*.min.css
-
-# IDE
-.vscode/
-.idea/
-*.iml
-.project
-.classpath
-*.swp
-*.swo
-*~
-
-# OS
+/dist
+/.elm-land
+/.env
+/elm-stuff
+/node_modules
 .DS_Store
-Thumbs.db
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
+*.pem

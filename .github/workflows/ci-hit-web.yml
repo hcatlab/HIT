@@ -50,4 +50,4 @@ jobs:
           elm_glob: true
 
       - name: Build
-        run: npm run build:prod
+        run: npm run build

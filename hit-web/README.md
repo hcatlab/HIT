@@ -1,42 +1,36 @@
-# HIT Web
+# hit-web
 
-Single-page web application (Elm + Pico CSS)
-
-## Prerequisites
-
-- Node.js and npm
+> Elm Land SPA with Pico CSS
 
 ## Setup
 
+Requires Node.js v18+ and backend running at `http://localhost:8080`
+
 ```bash
 npm install
+npm start  # dev server at :1234
 ```
 
-## Develop
+## Commands
 
 ```bash
-npm run dev
+npm run build           # production build
+npm run dev:elm-land    # Elm only
+npm run dev:sass        # Sass only
+npx elm-land add page /route  # new page
 ```
 
-Visit http://localhost:8000.
+## Adding pages
 
-## Build
+Pages must use `Page.new` with signature `Shared.Model -> Route () -> Page Model Msg`:
 
-Dev build:
-
-```bash
-npm run build
+```elm
+page : Shared.Model -> Route () -> Page Model Msg
+page _ _ =
+    Page.new { init, update, subscriptions, view }
+        |> Page.withLayout (\_ -> Layouts.Default {})
 ```
 
-Production build:
+## Deploy
 
-```bash
-npm run build:prod
-```
-
-## Structure
-
-- `sass/` - SCSS stylesheets
-- `src/` - Elm source code
-- `css/` - Generated CSS (from SASS)
-- `dist/` - Compiled JavaScript (from Elm)
+`npm run build` outputs to `dist/`. Deploy to Netlify, Vercel, or any static host.
