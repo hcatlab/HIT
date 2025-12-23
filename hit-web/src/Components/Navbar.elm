@@ -23,7 +23,11 @@ view props =
         [ Html.ul []
             (Html.li []
                 [ Html.strong []
-                    [ Html.a [ Attr.href "/" ] [ Html.text props.title ]
+                    [ Html.a [ Attr.href "/" ]
+                        [ Html.img [ Attr.src "/favicon.svg", Attr.alt "", Attr.width 24, Attr.height 24 ] []
+                        , Html.text " "
+                        , Html.text props.title
+                        ]
                     ]
                 ]
                 :: List.map navItem props.left
