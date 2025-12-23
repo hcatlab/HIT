@@ -45,8 +45,8 @@ jobs:
       - name: Check Elm formatting
         uses: sparksp/elm-format-action@v1
         with:
-          elm_files: hit-web/src/
           elm_format: elm-format
+          elm_files: hit-web/src/**/*.elm
           elm_glob: true
 
       - name: Build
