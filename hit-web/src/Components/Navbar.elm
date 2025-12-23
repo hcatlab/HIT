@@ -17,8 +17,9 @@ view :
     , left : List (NavItem msg)
     , right : List (NavItem msg)
     }
+    -> String
     -> Html msg
-view props =
+view props currentPath =
     Html.nav []
         [ Html.ul []
             (Html.li []
@@ -30,22 +31,37 @@ view props =
                         ]
                     ]
                 ]
-                :: List.map navItem props.left
+                :: List.map (navItem currentPath) props.left
             )
-        , Html.ul [] (List.map navItem props.right)
+        , Html.ul [] (List.map (navItem currentPath) props.right)
         ]
 
 
-navItem : NavItem msg -> Html msg
-navItem item =
+navItem : String -> NavItem msg -> Html msg
+navItem currentPath item =
     let
+        isCurrent =
+            case item.href of
+                Just url ->
+                    url == currentPath
+
+                Nothing ->
+                    False
+
+        currentAttr =
+            if isCurrent then
+                [ Attr.class "is-current" ]
+
+            else
+                []
+
         attrs =
             case ( item.href, item.onClick ) of
                 ( Just url, Just onClickMsg ) ->
-                    [ Attr.href url, onClick onClickMsg ]
+                    [ Attr.href url, onClick onClickMsg ] ++ currentAttr
 
                 ( Just url, Nothing ) ->
-                    [ Attr.href url ]
+                    Attr.href url :: currentAttr
 
                 ( Nothing, Just onClickMsg ) ->
                     [ onClick onClickMsg ]

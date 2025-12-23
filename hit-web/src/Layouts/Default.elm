@@ -6,6 +6,7 @@ import Html
 import Html.Attributes
 import Layout exposing (Layout)
 import Route exposing (Route)
+import Route.Path
 import Shared
 import Shared.Msg as SharedMsg
 import View exposing (View)
@@ -16,11 +17,11 @@ type alias Props =
 
 
 layout : Props -> Shared.Model -> Route () -> Layout () Model Msg contentMsg
-layout _ shared _ =
+layout _ shared route =
     Layout.new
         { init = init
         , update = update
-        , view = view shared
+        , view = view shared route
         , subscriptions = subscriptions
         }
 
@@ -69,8 +70,8 @@ subscriptions _ =
 -- VIEW
 
 
-view : Shared.Model -> { toContentMsg : Msg -> contentMsg, content : View contentMsg, model : Model } -> View contentMsg
-view shared { toContentMsg, content } =
+view : Shared.Model -> Route () -> { toContentMsg : Msg -> contentMsg, content : View contentMsg, model : Model } -> View contentMsg
+view shared route { toContentMsg, content } =
     let
         navLink title href =
             { title = title, href = Just href, onClick = Nothing }
@@ -92,6 +93,10 @@ view shared { toContentMsg, content } =
                     , left = []
                     , right = [ navLink "Login" "/login", navLink "Sign up" "/signup" ]
                     }
+
+        currentPath : String
+        currentPath =
+            Route.Path.toString route.path
     in
     { title =
         if String.isEmpty content.title then
@@ -101,7 +106,7 @@ view shared { toContentMsg, content } =
             content.title ++ " | HIT"
     , body =
         [ Html.header []
-            [ Components.Navbar.view navbarProps
+            [ Components.Navbar.view navbarProps currentPath
                 |> Html.map toContentMsg
             ]
         , Html.main_ [] content.body
