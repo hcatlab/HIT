@@ -104,6 +104,10 @@ hitDb =
                   (UserId (fieldNamed "user"))
                   (fieldNamed "name")
                   (fieldNamed "description")
+                  (fieldNamed "number")
+                  (fieldNamed "color")
+                  (fieldNamed "start_date")
+                  (fieldNamed "end_date")
                   (fieldNamed "created_at")
                   (fieldNamed "modified_at")
               ),

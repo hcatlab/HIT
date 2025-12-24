@@ -12,7 +12,7 @@ module HIT.Types.Goal
 where
 
 import Data.Text (Text)
-import Data.Time (UTCTime)
+import Data.Time (Day, UTCTime)
 import Data.UUID (UUID)
 import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
 import GHC.Generics (Generic)
@@ -23,7 +23,11 @@ data GoalT f = Goal
   { id :: Columnar f UUID,
     user :: PrimaryKey UserT f,
     name :: Columnar f Text,
-    description :: Columnar f (Maybe Text),
+    description :: Columnar f Text,
+    number :: Columnar f Integer,
+    color :: Columnar f Text,
+    startDate :: Columnar f Day,
+    endDate :: Columnar f (Maybe Day),
     createdAt :: Columnar f UTCTime,
     modifiedAt :: Columnar f UTCTime
   }
@@ -39,7 +43,7 @@ instance Beamable GoalT
 
 instance Table GoalT where
   data PrimaryKey GoalT f = GoalId (Columnar f UUID) deriving (Generic)
-  primaryKey (Goal gid _ _ _ _ _) = GoalId gid
+  primaryKey (Goal gid _ _ _ _ _ _ _ _ _) = GoalId gid
 
 deriving instance Show (PrimaryKey GoalT Identity)
 

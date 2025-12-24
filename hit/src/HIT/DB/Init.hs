@@ -60,7 +60,8 @@ initDb conn = do
             "  password_hash TEXT NOT NULL,",
             "  api_token TEXT UNIQUE NOT NULL,",
             "  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
-            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+            "  CHECK (modified_at >= created_at)",
             ")"
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createUsersSql))
@@ -73,9 +74,17 @@ initDb conn = do
             "  id UUID PRIMARY KEY,",
             "  \"user\" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,",
             "  name TEXT NOT NULL,",
-            "  description TEXT,",
+            "  description TEXT NOT NULL,",
+            "  number INTEGER NOT NULL,",
+            "  color TEXT NOT NULL,",
+            "  start_date DATE NOT NULL,",
+            "  end_date DATE,",
             "  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
-            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+            "  CHECK (end_date IS NULL OR end_date > start_date),",
+            "  CHECK (length(trim(description)) > 0),",
+            "  CHECK (modified_at >= created_at),",
+            "  UNIQUE (\"user\", number)",
             ")"
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createGoalsSql))
@@ -94,7 +103,8 @@ initDb conn = do
             "  rate JSON NOT NULL,",
             "  deadline JSON NOT NULL,",
             "  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
-            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+            "  CHECK (modified_at >= created_at)",
             ")"
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createHabitsSql))
@@ -124,7 +134,8 @@ initDb conn = do
             "  rate JSON NOT NULL,",
             "  deadline JSON NOT NULL,",
             "  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
-            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            "  modified_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+            "  CHECK (modified_at >= created_at)",
             ")"
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createIntentionsSql))

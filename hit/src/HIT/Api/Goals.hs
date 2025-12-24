@@ -8,7 +8,7 @@ module HIT.Api.Goals where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
-import Data.Time (UTCTime)
+import Data.Time (Day, UTCTime)
 import GHC.Generics (Generic)
 import Servant
 
@@ -23,7 +23,10 @@ type GoalsApi =
 
 data CreateGoalRequest = CreateGoalRequest
   { name :: Text,
-    description :: Maybe Text
+    description :: Text,
+    color :: Text,
+    startDate :: Maybe Day,
+    endDate :: Maybe Day
   }
   deriving (Show, Eq, Generic)
 
@@ -33,7 +36,10 @@ instance FromJSON CreateGoalRequest
 
 data UpdateGoalRequest = UpdateGoalRequest
   { name :: Text,
-    description :: Maybe Text
+    description :: Text,
+    color :: Text,
+    startDate :: Day,
+    endDate :: Maybe Day
   }
   deriving (Show, Eq, Generic)
 
@@ -43,8 +49,12 @@ instance FromJSON UpdateGoalRequest
 
 data GoalResponse = GoalResponse
   { id :: Text,
+    number :: Int,
     name :: Text,
-    description :: Maybe Text,
+    description :: Text,
+    color :: Text,
+    startDate :: Day,
+    endDate :: Maybe Day,
     createdAt :: UTCTime,
     modifiedAt :: UTCTime
   }

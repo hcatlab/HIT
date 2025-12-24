@@ -35,15 +35,15 @@ instance CrudResource GoalsResource where
   list (GoalsResource conn) u =
     map toGoalResponse <$> listGoals conn (User.id u)
 
-  create (GoalsResource conn) u (CreateGoalRequest gname gdesc) = do
+  create (GoalsResource conn) u (CreateGoalRequest gname gdesc gcolor gstartDate gendDate) = do
     gid <- UUIDv4.nextRandom
-    toGoalResponse <$> createGoal conn gid (User.id u) gname gdesc
+    toGoalResponse <$> createGoal conn gid (User.id u) gname gdesc gcolor gstartDate gendDate
 
   read (GoalsResource conn) u gid =
     fmap toGoalResponse <$> getGoal conn (User.id u) gid
 
-  update (GoalsResource conn) u gid (UpdateGoalRequest gname gdesc) =
-    fmap toGoalResponse <$> updateGoal conn (User.id u) gid gname gdesc
+  update (GoalsResource conn) u gid (UpdateGoalRequest gname gdesc gcolor gstartDate gendDate) =
+    fmap toGoalResponse <$> updateGoal conn (User.id u) gid gname gdesc gcolor gstartDate gendDate
 
   delete (GoalsResource conn) u =
     deleteGoal conn (User.id u)
@@ -52,7 +52,7 @@ goalsServer :: Connection -> User -> Server GoalsApi
 goalsServer conn = crudServerTc (GoalsResource conn)
 
 toGoalResponse :: Goal.GoalT Identity -> GoalResponse
-toGoalResponse (Goal.Goal gid _ gname gdesc createdAt modifiedAt) =
-  GoalResponse (UUID.toText gid) gname gdesc createdAt modifiedAt
+toGoalResponse (Goal.Goal gid _ gname gdesc num gcolor gstartDate gendDate createdAt modifiedAt) =
+  GoalResponse (UUID.toText gid) (fromIntegral num :: Int) gname gdesc gcolor gstartDate gendDate createdAt modifiedAt
 
 type GoalsApi = CrudApiFor GoalsResource

@@ -32,3 +32,15 @@
 nav a.is-current {
   text-decoration: underline dotted;
 }
+
+/* Goals page */
+.goal-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.goal {
+  padding: 1rem 1rem;
+  border: 1px solid var(--pico-background-color);
+  border-radius: 0.5rem;
+}

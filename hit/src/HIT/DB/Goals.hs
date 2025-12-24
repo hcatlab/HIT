@@ -1,16 +1,16 @@
-{-# LANGUAGE TypeFamilies #-}
-
 module HIT.DB.Goals
   ( createGoal,
     getGoal,
     listGoals,
     updateGoal,
     deleteGoal,
+    getNextGoalNumber,
   )
 where
 
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Time (getCurrentTime)
+import Data.Time (Day, UTCTime, getCurrentTime, utctDay)
 import Data.UUID (UUID)
 import Database.Beam
 import Database.Beam.Postgres (runBeamPostgres)
@@ -20,10 +20,12 @@ import HIT.Types.Goal (Goal, GoalT (..))
 import HIT.Types.Goal qualified as Goal (GoalT (..))
 import HIT.Types.User (PrimaryKey (UserId))
 
-createGoal :: Connection -> UUID -> Text -> Text -> Maybe Text -> IO Goal
-createGoal conn goalId uid gname gdesc = do
+createGoal :: Connection -> UUID -> Text -> Text -> Text -> Text -> Maybe Day -> Maybe Day -> IO Goal
+createGoal conn goalId uid gname gdesc gcolor gstartDate gendDate = do
   now <- getCurrentTime
-  let g = Goal goalId (UserId uid) gname gdesc now now
+  nextNum <- getNextGoalNumber conn uid
+  let effectiveStart = fromMaybe (utctDay now) gstartDate
+  let g = Goal goalId (UserId uid) gname gdesc (fromIntegral nextNum :: Integer) gcolor effectiveStart gendDate now now
   runBeamPostgres conn $
     runInsert $
       insert (goals hitDb) $
@@ -48,20 +50,21 @@ listGoals conn uid =
         guard_ (Goal.user g ==. UserId (val_ uid))
         pure g
 
-updateGoal :: Connection -> Text -> UUID -> Text -> Maybe Text -> IO (Maybe Goal)
-updateGoal conn uid goalId gname gdesc = do
+updateGoal :: Connection -> Text -> UUID -> Text -> Text -> Text -> Day -> Maybe Day -> IO (Maybe Goal)
+updateGoal conn uid goalId gname gdesc gcolor gstartDate gendDate = do
   mExisting <- getGoal conn uid goalId
   case mExisting of
     Nothing -> pure Nothing
-    Just (Goal _ _ _ _ createdAtOld _) -> do
+    Just (Goal _ _ _ _ _ _ _ _ _ _) -> do
       now <- getCurrentTime
       runBeamPostgres conn $
         runUpdate $
           update
             (goals hitDb)
-            (\g -> mconcat [Goal.name g <-. val_ gname, Goal.description g <-. val_ gdesc, Goal.modifiedAt g <-. val_ now])
+            (\g -> mconcat [Goal.name g <-. val_ gname, Goal.description g <-. val_ gdesc, Goal.color g <-. val_ gcolor, Goal.startDate g <-. val_ gstartDate, Goal.endDate g <-. val_ gendDate, Goal.modifiedAt g <-. val_ now])
             (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
-      pure (Just (Goal goalId (UserId uid) gname gdesc createdAtOld now))
+      -- Re-fetch to get the current goal number
+      getGoal conn uid goalId
 
 deleteGoal :: Connection -> Text -> UUID -> IO Bool
 deleteGoal conn uid goalId = do
@@ -73,3 +76,15 @@ deleteGoal conn uid goalId = do
         runDelete $
           delete (goals hitDb) (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
       pure True
+
+-- Get next available goal number for a user.
+-- Returns the smallest positive integer not currently in use by active (non-archived) goals.
+getNextGoalNumber :: Connection -> Text -> IO Int
+getNextGoalNumber conn uid = do
+  goals_ <- listGoals conn uid
+  let usedNumbers = map (\(Goal _ _ _ _ num _ _ _ _ _) -> fromIntegral num :: Int) goals_
+  pure $ findNextAvailable 1 usedNumbers
+  where
+    findNextAvailable num used
+      | num `notElem` used = num
+      | otherwise = findNextAvailable (num + 1) used

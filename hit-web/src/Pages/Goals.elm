@@ -2,9 +2,11 @@ module Pages.Goals exposing (Model, Msg, page)
 
 import Api
 import Api.Goals
+import Components.Goal as Goal
+import Components.Listing as Listing
 import Dict
 import Effect exposing (Effect)
-import Html exposing (Html, div, li, text, ul)
+import Html exposing (Html, div, text)
 import Http
 import Layouts
 import Page exposing (Page)
@@ -105,20 +107,13 @@ view model =
                         Html.p [] [ text "No goals yet. Create one to get started!" ]
 
                     else
-                        ul []
-                            (List.map
-                                (\goal ->
-                                    li []
-                                        [ Html.strong [] [ text goal.name ]
-                                        , case goal.description of
-                                            Just desc ->
-                                                Html.p [] [ text desc ]
-
-                                            Nothing ->
-                                                text ""
-                                        ]
-                                )
-                                goals
+                        Html.map never
+                            (Listing.view
+                                { items = goals
+                                , render = Goal.view
+                                , listClass = "goal-list"
+                                , itemClass = "goal-item"
+                                }
                             )
             ]
         ]

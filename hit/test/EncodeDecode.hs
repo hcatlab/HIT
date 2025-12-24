@@ -14,7 +14,9 @@ import Data.ByteString.Lazy.UTF8 qualified as LBU
 import Data.Containers.ListUtils (nubInt)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
-import Data.Time (UTCTime)
+import Data.Text qualified as T
+import Data.Time (Day (ModifiedJulianDay), UTCTime)
+import HIT.Api.Goals (CreateGoalRequest (..), GoalResponse (..), UpdateGoalRequest (..))
 import HIT.Api.Habits
   ( CreateHabitRequest (..),
     HabitDeadline (..),
@@ -130,6 +132,22 @@ instance Arbitrary HabitDeadline where
 instance Arbitrary UTCTime where
   arbitrary = pure (read "2023-01-01 00:00:00 UTC")
 
+-- Goals CRUD payloads and responses
+nonEmptyText :: Gen Text
+nonEmptyText = arbitrary `suchThat` (not . T.null)
+
+instance Arbitrary CreateGoalRequest where
+  arbitrary = CreateGoalRequest <$> arbitrary <*> nonEmptyText <*> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary UpdateGoalRequest where
+  arbitrary = UpdateGoalRequest <$> arbitrary <*> nonEmptyText <*> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary GoalResponse where
+  arbitrary = GoalResponse <$> arbitrary <*> chooseInt (1, 100) <*> arbitrary <*> nonEmptyText <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary Day where
+  arbitrary = ModifiedJulianDay <$> arbitrary
+
 instance Arbitrary HabitView where
   arbitrary = do
     interval <- arbitrary :: Gen Interval
@@ -240,6 +258,10 @@ tests =
           testProperty "encodeDecode Deadline Daily" (encodeDecode :: Deadline Daily -> Property),
           testProperty "encodeDecode Deadline Weekly" (encodeDecode :: Deadline Weekly -> Property),
           testProperty "encodeDecode Sort" (encodeDecode :: Sort -> Property),
+          -- Goals CRUD payloads and responses
+          testProperty "encodeDecode CreateGoalRequest" (encodeDecode :: CreateGoalRequest -> Property),
+          testProperty "encodeDecode UpdateGoalRequest" (encodeDecode :: UpdateGoalRequest -> Property),
+          testProperty "encodeDecode GoalResponse" (encodeDecode :: GoalResponse -> Property),
           -- Habits unified list view and p-parameterized CRUD payloads
           testProperty "encodeDecode HabitView" (encodeDecode :: HabitView -> Property),
           testProperty "encodeDecode CreateHabitRequest Daily" (encodeDecode :: CreateHabitRequest 'Daily -> Property),

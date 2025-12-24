@@ -10,8 +10,12 @@ import Json.Decode as Decode exposing (Decoder)
 
 type alias Goal =
     { id : String
+    , number : Int
     , name : String
-    , description : Maybe String
+    , description : String
+    , color : String
+    , startDate : String
+    , endDate : Maybe String
     , createdAt : String
     , modifiedAt : String
     }
@@ -19,12 +23,33 @@ type alias Goal =
 
 goalDecoder : Decoder Goal
 goalDecoder =
-    Decode.map5 Goal
+    Decode.map8
+        (\id_ number_ name_ description_ color_ startDate_ endDate_ createdAt_ ->
+            { id = id_
+            , number = number_
+            , name = name_
+            , description = description_
+            , color = color_
+            , startDate = startDate_
+            , endDate = endDate_
+            , createdAt = createdAt_
+            , modifiedAt = createdAt_
+            }
+        )
         (Decode.field "id" Decode.string)
+        (Decode.field "number" Decode.int)
         (Decode.field "name" Decode.string)
-        (Decode.field "description" (Decode.nullable Decode.string))
+        (Decode.field "description" Decode.string)
+        (Decode.field "color" Decode.string)
+        (Decode.field "startDate" Decode.string)
+        (Decode.field "endDate" (Decode.nullable Decode.string))
         (Decode.field "createdAt" Decode.string)
-        (Decode.field "modifiedAt" Decode.string)
+        |> Decode.andThen
+            (\goal ->
+                Decode.map
+                    (\modifiedAt_ -> { goal | modifiedAt = modifiedAt_ })
+                    (Decode.field "modifiedAt" Decode.string)
+            )
 
 
 listGoals :
