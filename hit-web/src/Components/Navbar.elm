@@ -47,28 +47,26 @@ navItem currentPath item =
 
                 Nothing ->
                     False
-
-        currentAttr =
-            if isCurrent then
-                [ Attr.class "is-current" ]
-
-            else
-                []
-
-        attrs =
-            case ( item.href, item.onClick ) of
-                ( Just url, Just onClickMsg ) ->
-                    [ Attr.href url, onClick onClickMsg ] ++ currentAttr
-
-                ( Just url, Nothing ) ->
-                    Attr.href url :: currentAttr
-
-                ( Nothing, Just onClickMsg ) ->
-                    [ onClick onClickMsg ]
-
-                ( Nothing, Nothing ) ->
-                    []
     in
     Html.li []
-        [ Html.a attrs [ Html.text item.title ]
-        ]
+        (if isCurrent then
+            [ Html.button [] [ Html.text item.title ] ]
+
+         else
+            let
+                attrs =
+                    case ( item.href, item.onClick ) of
+                        ( Just url, Just onClickMsg ) ->
+                            [ Attr.href url, onClick onClickMsg ]
+
+                        ( Just url, Nothing ) ->
+                            [ Attr.href url ]
+
+                        ( Nothing, Just onClickMsg ) ->
+                            [ onClick onClickMsg ]
+
+                        ( Nothing, Nothing ) ->
+                            []
+            in
+            [ Html.a attrs [ Html.text item.title ] ]
+        )

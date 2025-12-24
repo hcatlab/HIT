@@ -1,6 +1,6 @@
 @use "pico" with (
   $enable-semantic-container: true,
-  $enable-classes: false,
+  $enable-classes: true,
   $theme-color: "fuchsia"
 );
 
@@ -26,11 +26,6 @@
 
 .footer-right a + a {
   margin-left: 0.5rem;
-}
-
-/* underline current navbar item */
-nav a.is-current {
-  text-decoration: underline dotted;
 }
 
 /* Goals page */
