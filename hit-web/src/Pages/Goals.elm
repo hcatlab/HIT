@@ -3,6 +3,7 @@ module Pages.Goals exposing (Model, Msg, page)
 import Api
 import Api.Goals exposing (Goal, placeholderGoal)
 import Color
+import Components.Button as Button
 import Components.Goal as Goal exposing (Msg(..))
 import Components.Listing as Listing
 import Dict
@@ -198,11 +199,8 @@ update msg model =
                                 effect =
                                     case ( maybeGoal, model.token ) of
                                         ( Just goal, Just token ) ->
-                                            if goal.id == "" then
-                                                Effect.none
-
-                                            else
-                                                Effect.sendCmd <|
+                                            let
+                                                updateCmd =
                                                     Api.Goals.updateGoal
                                                         { token = token
                                                         , id = goal.id
@@ -213,6 +211,40 @@ update msg model =
                                                         , endDate = goal.endDate
                                                         , onResponse = GoalUpdated idx
                                                         }
+
+                                                createCmd =
+                                                    let
+                                                        startDateMaybe =
+                                                            if goal.startDate == "" then
+                                                                Nothing
+
+                                                            else
+                                                                Just goal.startDate
+                                                    in
+                                                    Api.Goals.createGoal
+                                                        { token = token
+                                                        , name = goal.name
+                                                        , description = goal.description
+                                                        , color = goal.color
+                                                        , startDate = startDateMaybe
+                                                        , endDate = goal.endDate
+                                                        , onResponse = GoalCreated idx
+                                                        }
+                                            in
+                                            case subMsg of
+                                                Goal.SaveEdits ->
+                                                    if goal.id == "" then
+                                                        Effect.sendCmd <| createCmd
+
+                                                    else
+                                                        Effect.sendCmd <| updateCmd
+
+                                                _ ->
+                                                    if goal.id == "" then
+                                                        Effect.none
+
+                                                    else
+                                                        Effect.sendCmd <| updateCmd
 
                                         _ ->
                                             Effect.none
@@ -316,14 +348,9 @@ view model =
                             List.indexedMap Tuple.pair goals
 
                         addButton =
-                            Html.button
-                                [ Attr.class "add-goal-btn"
-                                , Attr.type_ "button"
-                                , Attr.style "margin" "1em 0"
-                                , Attr.style "padding" "0.5em 1em"
-                                , Attr.style "font-size" "1em"
-                                , Attr.style "background" model.placeholderColor
-                                , Attr.style "color" "#fff"
+                            Button.view
+                                { backgroundColor = model.placeholderColor }
+                                [ Attr.class "add-goal-button"
                                 , onClick AddNewGoal
                                 ]
                                 [ text "+ Add Goal" ]

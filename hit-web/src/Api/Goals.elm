@@ -175,7 +175,7 @@ deleteGoal { token, id, onResponse } =
 placeholderGoal : Int -> String -> Goal
 placeholderGoal number color =
     { id = ""
-    , number = number
+    , number = 0
     , name = ""
     , description = ""
     , color = color

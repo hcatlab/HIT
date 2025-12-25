@@ -92,11 +92,19 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        goalLabel =
+            if model.goal.number > 0 then
+                "#" ++ String.fromInt model.goal.number ++ " "
+
+            else
+                ""
+    in
     div [ class "goal", style "background-color" model.palette.background ]
         [ div [ class "goal-header", style "color" model.palette.primary ]
             (if model.isEditing then
                 [ strong []
-                    [ text ("#" ++ String.fromInt model.goal.number ++ " ")
+                    [ text goalLabel
                     ]
                 , input
                     [ value model.draftName
@@ -110,7 +118,7 @@ view model =
                 ]
 
              else
-                [ strong [] [ text ("#" ++ String.fromInt model.goal.number ++ " " ++ model.goal.name) ] ]
+                [ strong [] [ text (goalLabel ++ model.goal.name) ] ]
             )
         , if model.isEditing then
             textarea
@@ -222,10 +230,10 @@ paletteFromColor backgroundColor =
             let
                 primaryColor =
                     if Color.isLight color then
-                        Color.rgb 0 0 0
+                        Color.black
 
                     else
-                        Color.rgb 1 1 1
+                        Color.white
 
                 secondaryColor =
                     if Color.isLight color then
