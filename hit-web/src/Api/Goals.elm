@@ -1,5 +1,6 @@
 module Api.Goals exposing
     ( Goal
+    , createGoal
     , listGoals
     , updateGoal
     )
@@ -64,6 +65,50 @@ listGoals { token, onResponse } =
         , url = Api.apiUrl "/goals"
         , body = Http.emptyBody
         , expect = Http.expectJson onResponse (Decode.list goalDecoder)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+createGoal :
+    { token : String
+    , name : String
+    , description : String
+    , color : String
+    , startDate : Maybe String
+    , endDate : Maybe String
+    , onResponse : Result Http.Error Goal -> msg
+    }
+    -> Cmd msg
+createGoal { token, name, description, color, startDate, endDate, onResponse } =
+    Http.request
+        { method = "POST"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ token) ]
+        , url = Api.apiUrl "/goals"
+        , body =
+            Http.jsonBody <|
+                Encode.object
+                    [ ( "name", Encode.string name )
+                    , ( "description", Encode.string description )
+                    , ( "color", Encode.string color )
+                    , ( "startDate"
+                      , case startDate of
+                            Just d ->
+                                Encode.string d
+
+                            Nothing ->
+                                Encode.null
+                      )
+                    , ( "endDate"
+                      , case endDate of
+                            Just d ->
+                                Encode.string d
+
+                            Nothing ->
+                                Encode.null
+                      )
+                    ]
+        , expect = Http.expectJson onResponse goalDecoder
         , timeout = Nothing
         , tracker = Nothing
         }

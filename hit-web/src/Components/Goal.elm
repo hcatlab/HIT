@@ -121,17 +121,22 @@ view model =
             [ class "goal-footer"
             , style "color" model.palette.tertiary
             ]
-            [ small []
-                [ text ("Start Date: " ++ model.goal.startDate)
-                , text " | "
-                , case model.goal.endDate of
-                    Just endDate ->
-                        text ("End Date: " ++ endDate)
+            (if model.goal.startDate /= "" || model.goal.endDate /= Nothing then
+                [ small []
+                    [ text ("Start Date: " ++ model.goal.startDate)
+                    , text " | "
+                    , case model.goal.endDate of
+                        Just endDate ->
+                            text ("End Date: " ++ endDate)
 
-                    Nothing ->
-                        text "Active"
+                        Nothing ->
+                            text "Active"
+                    ]
                 ]
-            ]
+
+             else
+                []
+            )
         , div [ class "goal-actions" ]
             [ button
                 [ class "secondary"
