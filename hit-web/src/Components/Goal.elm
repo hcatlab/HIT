@@ -1,4 +1,4 @@
-module Components.Goal exposing (Model, Msg, init, update, view)
+module Components.Goal exposing (Model, Msg(..), init, update, view)
 
 import Api.Goals
 import Color
@@ -14,6 +14,7 @@ type alias Model =
     , isEditing : Bool
     , draftName : String
     , draftDescription : String
+    , confirmDelete : Bool
     }
 
 
@@ -24,6 +25,7 @@ init goal =
     , isEditing = False
     , draftName = goal.name
     , draftDescription = goal.description
+    , confirmDelete = False
     }
 
 
@@ -34,6 +36,8 @@ type Msg
     | SetName String
     | SetDescription String
     | SaveEdits
+    | RequestDelete
+    | DeleteGoal
 
 
 update : Msg -> Model -> ( Model, Maybe Api.Goals.Goal )
@@ -53,7 +57,7 @@ update msg model =
             ( { model | goal = updatedGoal }, Just updatedGoal )
 
         ToggleEdit ->
-            ( { model | isEditing = True, draftName = model.goal.name, draftDescription = model.goal.description }
+            ( { model | isEditing = True, draftName = model.goal.name, draftDescription = model.goal.description, confirmDelete = False }
             , Nothing
             )
 
@@ -77,7 +81,13 @@ update msg model =
                 updatedGoal =
                     { g | name = trimmedName, description = trimmedDesc }
             in
-            ( { model | goal = updatedGoal, isEditing = False }, Just updatedGoal )
+            ( { model | goal = updatedGoal, isEditing = False, confirmDelete = False }, Just updatedGoal )
+
+        RequestDelete ->
+            ( { model | confirmDelete = True }, Nothing )
+
+        DeleteGoal ->
+            ( { model | confirmDelete = False }, Just model.goal )
 
 
 view : Model -> Html Msg
@@ -140,7 +150,14 @@ view model =
                 []
             )
         , div [ class "goal-actions" ]
-            [ button
+            [ input
+                [ type_ "color"
+                , value model.palette.background
+                , onInput ChangeColor
+                , onBlur SaveColor
+                ]
+                []
+            , button
                 ([ class "secondary"
                  , onClick
                     (if model.isEditing then
@@ -165,13 +182,24 @@ view model =
                         "Edit"
                     )
                 ]
-            , input
-                [ type_ "color"
-                , value model.palette.background
-                , onInput ChangeColor
-                , onBlur SaveColor
+            , button
+                [ class "secondary"
+                , onClick
+                    (if model.confirmDelete then
+                        DeleteGoal
+
+                     else
+                        RequestDelete
+                    )
                 ]
-                []
+                [ text
+                    (if model.confirmDelete then
+                        "Sure?"
+
+                     else
+                        "Delete"
+                    )
+                ]
             ]
         ]
 

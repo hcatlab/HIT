@@ -3,7 +3,7 @@ module Pages.Goals exposing (Model, Msg, page)
 import Api
 import Api.Goals exposing (Goal, placeholderGoal)
 import Color
-import Components.Goal as Goal
+import Components.Goal as Goal exposing (Msg(..))
 import Components.Listing as Listing
 import Dict
 import Effect exposing (Effect)
@@ -85,6 +85,7 @@ type Msg
     | GoalCreated Int (Result Http.Error Api.Goals.Goal)
     | GotColor String
     | AddNewGoal
+    | GoalDeleted String (Result Http.Error ())
 
 
 colorGen : Random.Generator String
@@ -140,45 +141,83 @@ update msg model =
             case model.goals of
                 Api.Success goalModels ->
                     let
-                        updatedModels =
-                            List.indexedMap
-                                (\i gm ->
-                                    if i == idx then
-                                        Tuple.first (Goal.update subMsg gm)
-
-                                    else
-                                        gm
-                                )
-                                goalModels
-
-                        maybeGoal =
-                            List.drop idx updatedModels
+                        goalAtIndex =
+                            List.drop idx goalModels
                                 |> List.head
-                                |> Maybe.andThen (\gm -> Tuple.second (Goal.update subMsg gm))
-
-                        effect =
-                            case ( maybeGoal, model.token ) of
-                                ( Just goal, Just token ) ->
-                                    if goal.id == "" then
-                                        Effect.none
+                    in
+                    case subMsg of
+                        DeleteGoal ->
+                            case goalAtIndex of
+                                Just goal ->
+                                    if goal.goal.id == "" then
+                                        let
+                                            models =
+                                                List.take idx goalModels
+                                                    ++ List.drop (idx + 1) goalModels
+                                        in
+                                        ( { model | goals = Api.Success models }, Effect.none )
 
                                     else
-                                        Effect.sendCmd <|
-                                            Api.Goals.updateGoal
-                                                { token = token
-                                                , id = goal.id
-                                                , name = goal.name
-                                                , description = goal.description
-                                                , color = goal.color
-                                                , startDate = goal.startDate
-                                                , endDate = goal.endDate
-                                                , onResponse = GoalUpdated idx
-                                                }
+                                        let
+                                            effect =
+                                                case model.token of
+                                                    Just token ->
+                                                        Effect.sendCmd <|
+                                                            Api.Goals.deleteGoal
+                                                                { token = token
+                                                                , id = goal.goal.id
+                                                                , onResponse = GoalDeleted goal.goal.id
+                                                                }
 
-                                _ ->
-                                    Effect.none
-                    in
-                    ( { model | goals = Api.Success updatedModels }, effect )
+                                                    Nothing ->
+                                                        Effect.none
+                                        in
+                                        ( model, effect )
+
+                                Nothing ->
+                                    ( model, Effect.none )
+
+                        _ ->
+                            let
+                                updatedModels =
+                                    List.indexedMap
+                                        (\i gm ->
+                                            if i == idx then
+                                                Tuple.first (Goal.update subMsg gm)
+
+                                            else
+                                                gm
+                                        )
+                                        goalModels
+
+                                maybeGoal =
+                                    List.drop idx updatedModels
+                                        |> List.head
+                                        |> Maybe.andThen (\gm -> Tuple.second (Goal.update subMsg gm))
+
+                                effect =
+                                    case ( maybeGoal, model.token ) of
+                                        ( Just goal, Just token ) ->
+                                            if goal.id == "" then
+                                                Effect.none
+
+                                            else
+                                                Effect.sendCmd <|
+                                                    Api.Goals.updateGoal
+                                                        { token = token
+                                                        , id = goal.id
+                                                        , name = goal.name
+                                                        , description = goal.description
+                                                        , color = goal.color
+                                                        , startDate = goal.startDate
+                                                        , endDate = goal.endDate
+                                                        , onResponse = GoalUpdated idx
+                                                        }
+
+                                        _ ->
+                                            Effect.none
+                            in
+                            ( { model | goals = Api.Success updatedModels }, effect )
 
                 _ ->
                     ( model, Effect.none )
@@ -204,6 +243,21 @@ update msg model =
                     ( model, Effect.none )
 
         GoalUpdated _ (Err _) ->
+            ( model, Effect.none )
+
+        GoalDeleted goalId (Ok _) ->
+            case model.goals of
+                Api.Success goalModels ->
+                    let
+                        filtered =
+                            List.filter (\rm -> rm.goal.id /= goalId) goalModels
+                    in
+                    ( { model | goals = Api.Success filtered }, Effect.none )
+
+                _ ->
+                    ( model, Effect.none )
+
+        GoalDeleted _ (Err _) ->
             ( model, Effect.none )
 
         GoalCreated idx (Ok goal) ->

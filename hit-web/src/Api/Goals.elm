@@ -1,6 +1,7 @@
 module Api.Goals exposing
     ( Goal
     , createGoal
+    , deleteGoal
     , listGoals
     , placeholderGoal
     , updateGoal
@@ -148,6 +149,24 @@ updateGoal { token, id, name, description, color, startDate, endDate, onResponse
                       )
                     ]
         , expect = Http.expectJson onResponse goalDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+deleteGoal :
+    { token : String
+    , id : String
+    , onResponse : Result Http.Error () -> msg
+    }
+    -> Cmd msg
+deleteGoal { token, id, onResponse } =
+    Http.request
+        { method = "DELETE"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ token) ]
+        , url = Api.apiUrl ("/goals/" ++ id)
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever onResponse
         , timeout = Nothing
         , tracker = Nothing
         }
