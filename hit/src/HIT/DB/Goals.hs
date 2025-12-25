@@ -10,7 +10,7 @@ where
 
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Time (Day, UTCTime, getCurrentTime, utctDay)
+import Data.Time (Day, getCurrentTime, utctDay)
 import Data.UUID (UUID)
 import Database.Beam
 import Database.Beam.Postgres (runBeamPostgres)
@@ -45,17 +45,18 @@ listGoals :: Connection -> Text -> IO [Goal]
 listGoals conn uid =
   runBeamPostgres conn $
     runSelectReturningList $
-      select $ do
-        g <- all_ (goals hitDb)
-        guard_ (Goal.user g ==. UserId (val_ uid))
-        pure g
+      select $
+        orderBy_ (asc_ . Goal.number) $ do
+          g <- all_ (goals hitDb)
+          guard_ (Goal.user g ==. UserId (val_ uid))
+          pure g
 
 updateGoal :: Connection -> Text -> UUID -> Text -> Text -> Text -> Day -> Maybe Day -> IO (Maybe Goal)
 updateGoal conn uid goalId gname gdesc gcolor gstartDate gendDate = do
   mExisting <- getGoal conn uid goalId
   case mExisting of
     Nothing -> pure Nothing
-    Just (Goal _ _ _ _ _ _ _ _ _ _) -> do
+    Just Goal {} -> do
       now <- getCurrentTime
       runBeamPostgres conn $
         runUpdate $
