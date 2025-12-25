@@ -32,7 +32,8 @@ page shared _ =
 
 
 type alias Model =
-    { goals : Api.Data (List Api.Goals.Goal)
+    { goals : Api.Data (List Goal.Model)
+    , token : Maybe String
     }
 
 
@@ -40,7 +41,7 @@ init : Shared.Model -> () -> ( Model, Effect Msg )
 init shared _ =
     case shared.token of
         Just token ->
-            ( { goals = Api.Loading }
+            ( { goals = Api.Loading, token = Just token }
             , Effect.sendCmd <|
                 Api.Goals.listGoals
                     { token = token
@@ -49,7 +50,7 @@ init shared _ =
             )
 
         Nothing ->
-            ( { goals = Api.Loading }
+            ( { goals = Api.Loading, token = Nothing }
             , Effect.pushRoute { path = Route.Path.Login, query = Dict.empty, hash = Nothing }
             )
 
@@ -60,13 +61,15 @@ init shared _ =
 
 type Msg
     = GoalsResponse (Result Http.Error (List Api.Goals.Goal))
+    | GoalMsg Int Goal.Msg
+    | GoalUpdated Int (Result Http.Error Api.Goals.Goal)
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
         GoalsResponse (Ok goals) ->
-            ( { model | goals = Api.Success goals }
+            ( { model | goals = Api.Success (List.map Goal.init goals) }
             , Effect.none
             )
 
@@ -74,6 +77,72 @@ update msg model =
             ( { model | goals = Api.Failure error }
             , Effect.none
             )
+
+        GoalMsg idx subMsg ->
+            case model.goals of
+                Api.Success goalModels ->
+                    let
+                        updatedModels =
+                            List.indexedMap
+                                (\i gm ->
+                                    if i == idx then
+                                        Tuple.first (Goal.update subMsg gm)
+
+                                    else
+                                        gm
+                                )
+                                goalModels
+
+                        maybeGoal =
+                            List.drop idx updatedModels
+                                |> List.head
+                                |> Maybe.andThen (\gm -> Tuple.second (Goal.update subMsg gm))
+
+                        effect =
+                            case ( maybeGoal, model.token ) of
+                                ( Just goal, Just token ) ->
+                                    Effect.sendCmd <|
+                                        Api.Goals.updateGoal
+                                            { token = token
+                                            , id = goal.id
+                                            , name = goal.name
+                                            , description = goal.description
+                                            , color = goal.color
+                                            , startDate = goal.startDate
+                                            , endDate = goal.endDate
+                                            , onResponse = GoalUpdated idx
+                                            }
+
+                                _ ->
+                                    Effect.none
+                    in
+                    ( { model | goals = Api.Success updatedModels }, effect )
+
+                _ ->
+                    ( model, Effect.none )
+
+        GoalUpdated idx (Ok goal) ->
+            case model.goals of
+                Api.Success goalModels ->
+                    let
+                        updated =
+                            List.indexedMap
+                                (\i gm ->
+                                    if i == idx then
+                                        Goal.init goal
+
+                                    else
+                                        gm
+                                )
+                                goalModels
+                    in
+                    ( { model | goals = Api.Success updated }, Effect.none )
+
+                _ ->
+                    ( model, Effect.none )
+
+        GoalUpdated _ (Err _) ->
+            ( model, Effect.none )
 
 
 
@@ -107,14 +176,16 @@ view model =
                         Html.p [] [ text "No goals yet. Create one to get started!" ]
 
                     else
-                        Html.map never
-                            (Listing.view
-                                { items = goals
-                                , render = Goal.view
-                                , listClass = "goal-list"
-                                , itemClass = "goal-item"
-                                }
-                            )
+                        let
+                            indexed =
+                                List.indexedMap Tuple.pair goals
+                        in
+                        Listing.view
+                            { items = indexed
+                            , render = \( i, gm ) -> Html.map (GoalMsg i) (Goal.view gm)
+                            , listClass = "goal-list"
+                            , itemClass = "goal-item"
+                            }
             ]
         ]
     }

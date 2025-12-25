@@ -1,11 +1,13 @@
 module Api.Goals exposing
     ( Goal
     , listGoals
+    , updateGoal
     )
 
 import Api
 import Http
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 
 
 type alias Goal =
@@ -62,6 +64,44 @@ listGoals { token, onResponse } =
         , url = Api.apiUrl "/goals"
         , body = Http.emptyBody
         , expect = Http.expectJson onResponse (Decode.list goalDecoder)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+updateGoal :
+    { token : String
+    , id : String
+    , name : String
+    , description : String
+    , color : String
+    , startDate : String
+    , endDate : Maybe String
+    , onResponse : Result Http.Error Goal -> msg
+    }
+    -> Cmd msg
+updateGoal { token, id, name, description, color, startDate, endDate, onResponse } =
+    Http.request
+        { method = "PUT"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ token) ]
+        , url = Api.apiUrl ("/goals/" ++ id)
+        , body =
+            Http.jsonBody <|
+                Encode.object
+                    [ ( "name", Encode.string name )
+                    , ( "description", Encode.string description )
+                    , ( "color", Encode.string color )
+                    , ( "startDate", Encode.string startDate )
+                    , ( "endDate"
+                      , case endDate of
+                            Just d ->
+                                Encode.string d
+
+                            Nothing ->
+                                Encode.null
+                      )
+                    ]
+        , expect = Http.expectJson onResponse goalDecoder
         , timeout = Nothing
         , tracker = Nothing
         }

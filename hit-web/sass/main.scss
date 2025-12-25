@@ -39,3 +39,25 @@
   border: 1px solid var(--pico-background-color);
   border-radius: 0.5rem;
 }
+
+.goal-actions {
+  display: none;
+  justify-content: flex-end;
+  button {
+    height: 1.5rem;
+    padding: 0 0.5rem;
+  }
+  input[type="color"] {
+    height: 1.5rem;
+    width: 2rem;
+    padding: 0;
+    margin: 0 0 0 0.5rem;
+    border-width: 0.1rem;
+    cursor: pointer;
+  }
+}
+
+.goal:hover .goal-actions,
+.goal:focus-within .goal-actions {
+  display: flex;
+}

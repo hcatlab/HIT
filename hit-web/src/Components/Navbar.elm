@@ -25,7 +25,13 @@ view props currentPath =
             (Html.li []
                 [ Html.strong []
                     [ Html.a [ Attr.href "/" ]
-                        [ Html.img [ Attr.src "/favicon.svg", Attr.alt "", Attr.width 24, Attr.height 24 ] []
+                        [ Html.img
+                            [ Attr.src "/favicon.svg"
+                            , Attr.alt "Logo"
+                            , Attr.width 48
+                            , Attr.height 48
+                            ]
+                            []
                         , Html.text " "
                         , Html.text props.title
                         ]
