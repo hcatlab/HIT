@@ -1,7 +1,7 @@
 module Pages.Goals exposing (Model, Msg, page)
 
 import Api
-import Api.Goals
+import Api.Goals exposing (Goal, placeholderGoal)
 import Color
 import Components.Goal as Goal
 import Components.Listing as Listing
@@ -9,6 +9,7 @@ import Dict
 import Effect exposing (Effect)
 import Html exposing (Html, div, text)
 import Html.Attributes as Attr
+import Html.Events exposing (onClick)
 import Http
 import Layouts
 import Page exposing (Page)
@@ -73,16 +74,6 @@ init shared _ =
             )
 
 
-colorGen : Random.Generator String
-colorGen =
-    Random.map Color.toCssString
-        (Random.map3 Color.rgb255
-            (Random.int 0 255)
-            (Random.int 0 255)
-            (Random.int 0 255)
-        )
-
-
 
 -- UPDATE
 
@@ -93,6 +84,17 @@ type Msg
     | GoalUpdated Int (Result Http.Error Api.Goals.Goal)
     | GoalCreated Int (Result Http.Error Api.Goals.Goal)
     | GotColor String
+    | AddNewGoal
+
+
+colorGen : Random.Generator String
+colorGen =
+    Random.map Color.toCssString
+        (Random.map3 Color.rgb255
+            (Random.int 0 255)
+            (Random.int 0 255)
+            (Random.int 0 255)
+        )
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -105,36 +107,29 @@ update msg model =
             let
                 baseModels =
                     List.map Goal.init goals
-
-                count =
-                    List.length goals
-
-                placeholderGoal : Api.Goals.Goal
-                placeholderGoal =
-                    { id = ""
-                    , number = count + 1
-                    , name = "New goal"
-                    , description = "Edit to start a new goal..."
-                    , color = model.placeholderColor
-                    , startDate = ""
-                    , endDate = Nothing
-                    , createdAt = ""
-                    , modifiedAt = ""
-                    }
-
-                newModel =
-                    let
-                        gm =
-                            Goal.init placeholderGoal
-                    in
-                    { gm | isEditing = False, draftName = gm.draftName, draftDescription = gm.draftDescription }
-
-                models =
-                    baseModels ++ [ newModel ]
             in
-            ( { model | goals = Api.Success models }
+            ( { model | goals = Api.Success baseModels }
             , Effect.none
             )
+
+        AddNewGoal ->
+            case model.goals of
+                Api.Success goals ->
+                    let
+                        newModel =
+                            let
+                                gm =
+                                    Goal.init (placeholderGoal (List.length goals + 1) model.placeholderColor)
+                            in
+                            { gm | isEditing = True, draftName = gm.draftName, draftDescription = gm.draftDescription }
+
+                        models =
+                            goals ++ [ newModel ]
+                    in
+                    ( { model | goals = Api.Success models }, Effect.none )
+
+                _ ->
+                    ( model, Effect.none )
 
         GoalsResponse (Err error) ->
             ( { model | goals = Api.Failure error }
@@ -165,16 +160,7 @@ update msg model =
                             case ( maybeGoal, model.token ) of
                                 ( Just goal, Just token ) ->
                                     if goal.id == "" then
-                                        Effect.sendCmd <|
-                                            Api.Goals.createGoal
-                                                { token = token
-                                                , name = goal.name
-                                                , description = goal.description
-                                                , color = goal.color
-                                                , startDate = Nothing
-                                                , endDate = Nothing
-                                                , onResponse = GoalCreated idx
-                                                }
+                                        Effect.none
 
                                     else
                                         Effect.sendCmd <|
@@ -271,20 +257,32 @@ view model =
                     Html.p [] [ text ("Error loading goals: " ++ Api.errorToString error) ]
 
                 Api.Success goals ->
-                    if List.isEmpty goals then
-                        Html.p [] [ text "No goals yet. Create one to get started!" ]
+                    let
+                        indexed =
+                            List.indexedMap Tuple.pair goals
 
-                    else
-                        let
-                            indexed =
-                                List.indexedMap Tuple.pair goals
-                        in
-                        Listing.view
+                        addButton =
+                            Html.button
+                                [ Attr.class "add-goal-btn"
+                                , Attr.type_ "button"
+                                , Attr.style "margin" "1em 0"
+                                , Attr.style "padding" "0.5em 1em"
+                                , Attr.style "font-size" "1em"
+                                , Attr.style "background" model.placeholderColor
+                                , Attr.style "color" "#fff"
+                                , onClick AddNewGoal
+                                ]
+                                [ text "+ Add Goal" ]
+                    in
+                    div []
+                        [ Listing.view
                             { items = indexed
                             , render = \( i, gm ) -> Html.map (GoalMsg i) (Goal.view gm)
                             , listClass = "goal-list"
                             , itemClass = "goal-item"
                             }
+                        , addButton
+                        ]
             ]
         ]
     }

@@ -2,6 +2,7 @@ module Api.Goals exposing
     ( Goal
     , createGoal
     , listGoals
+    , placeholderGoal
     , updateGoal
     )
 
@@ -150,3 +151,17 @@ updateGoal { token, id, name, description, color, startDate, endDate, onResponse
         , timeout = Nothing
         , tracker = Nothing
         }
+
+
+placeholderGoal : Int -> String -> Goal
+placeholderGoal number color =
+    { id = ""
+    , number = number
+    , name = ""
+    , description = ""
+    , color = color
+    , startDate = ""
+    , endDate = Nothing
+    , createdAt = ""
+    , modifiedAt = ""
+    }

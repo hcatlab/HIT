@@ -3,9 +3,9 @@ module Components.Goal exposing (Model, Msg, init, update, view)
 import Api.Goals
 import Color
 import Html exposing (Html, button, div, input, p, small, span, strong, text, textarea)
-import Html.Attributes exposing (attribute, class, style, type_, value)
+import Html.Attributes exposing (attribute, class, disabled, placeholder, style, type_, value)
 import Html.Events exposing (onBlur, onClick, onInput)
-import String
+import String exposing (isEmpty)
 
 
 type alias Model =
@@ -90,6 +90,7 @@ view model =
                     ]
                 , input
                     [ value model.draftName
+                    , placeholder "New goal"
                     , onInput SetName
                     , style "background-color" model.palette.foreground
                     , style "color" model.palette.primary
@@ -104,6 +105,7 @@ view model =
         , if model.isEditing then
             textarea
                 [ value model.draftDescription
+                , placeholder "My goal is..."
                 , onInput SetDescription
                 , style "background-color" model.palette.foreground
                 , style "color" model.palette.secondary
@@ -139,15 +141,22 @@ view model =
             )
         , div [ class "goal-actions" ]
             [ button
-                [ class "secondary"
-                , onClick
+                ([ class "secondary"
+                 , onClick
                     (if model.isEditing then
                         SaveEdits
 
                      else
                         ToggleEdit
                     )
-                ]
+                 ]
+                    ++ (if model.isEditing && isEmpty model.draftName && isEmpty model.draftDescription then
+                            [ disabled True ]
+
+                        else
+                            []
+                       )
+                )
                 [ text
                     (if model.isEditing then
                         "Save"
