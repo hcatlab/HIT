@@ -58,13 +58,13 @@ updateGoal conn uid goalId gname gdesc gcolor gstartDate gendDate = do
     Nothing -> pure Nothing
     Just Goal {} -> do
       now <- getCurrentTime
-      runBeamPostgres conn $
-        runUpdate $
-          update
-            (goals hitDb)
-            (\g -> mconcat [Goal.name g <-. val_ gname, Goal.description g <-. val_ gdesc, Goal.color g <-. val_ gcolor, Goal.startDate g <-. val_ gstartDate, Goal.endDate g <-. val_ gendDate, Goal.modifiedAt g <-. val_ now])
-            (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
-      -- Re-fetch to get the current goal number
+      _ <-
+        runBeamPostgres conn $
+          runUpdate $
+            update
+              (goals hitDb)
+              (\g -> mconcat [Goal.name g <-. val_ gname, Goal.description g <-. val_ gdesc, Goal.color g <-. val_ gcolor, Goal.startDate g <-. val_ gstartDate, Goal.endDate g <-. val_ gendDate, Goal.modifiedAt g <-. val_ now])
+              (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
       getGoal conn uid goalId
 
 deleteGoal :: Connection -> Text -> UUID -> IO Bool

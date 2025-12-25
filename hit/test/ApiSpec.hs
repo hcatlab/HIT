@@ -112,7 +112,7 @@ spec = with mkApp $ do
     it "create goal and read it back" $ do
       loginRes <- request "POST" "/login" [("Content-Type", "application/json")] [json| {"id":"alice","password":"alice"} |]
       let tok = extractToken loginRes
-      goalRes <- request "POST" "/goals" [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Build HIT","description":"Build Habit and Intention Tracker"} |]
+      goalRes <- request "POST" "/goals" [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Build HIT","description":"Build Habit and Intention Tracker","color":"#017290","startDate":null,"endDate":null} |]
       let gid = extractId goalRes
       readRes <- request "GET" (BS.append "/goals/" (Text.encodeUtf8 gid)) [authHeader tok] ""
       (createdAt, modifiedAt) <- case eitherDecode (simpleBody readRes) of
@@ -127,7 +127,7 @@ spec = with mkApp $ do
           _ -> liftIO (fail "Goal response missing fields")
         _ -> liftIO (fail "Invalid goal response JSON")
       -- Update goal and check modifiedAt changes
-      _ <- request "PUT" (BS.append "/goals/" (Text.encodeUtf8 gid)) [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Build HIT+","description":"Updated desc"} |]
+      _ <- request "PUT" (BS.append "/goals/" (Text.encodeUtf8 gid)) [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Build HIT+","description":"Updated desc","color":"#017290","startDate":"2023-01-01","endDate":null} |]
       updRes <- request "GET" (BS.append "/goals/" (Text.encodeUtf8 gid)) [authHeader tok] ""
       case eitherDecode (simpleBody updRes) of
         Right (Object o) -> case (KM.lookup "createdAt" o, KM.lookup "modifiedAt" o) of
@@ -155,7 +155,7 @@ spec = with mkApp $ do
     it "create daily habit and read it back" $ do
       loginRes <- request "POST" "/login" [("Content-Type", "application/json")] [json| {"id":"alice","password":"alice"} |]
       let tok = extractToken loginRes
-      goalRes <- request "POST" "/goals" [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"G","description":"D"} |]
+      goalRes <- request "POST" "/goals" [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"G","description":"D","color":"#017290","startDate":null,"endDate":null} |]
       let gid = extractId goalRes
       habitRes <- request "POST" "/habits/daily" [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Drink","description":"8 cups","sort":true,"rate":"1/1","deadline":[9,12,15],"goalIds":[#{gid}]} |]
       let hid = extractId habitRes
@@ -206,7 +206,7 @@ spec = with mkApp $ do
     it "create weekly intention and read it back" $ do
       loginRes <- request "POST" "/login" [("Content-Type", "application/json")] [json| {"id":"alice","password":"alice"} |]
       let tok = extractToken loginRes
-      goalRes <- request "POST" "/goals" [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"G2","description":"D2"} |]
+      goalRes <- request "POST" "/goals" [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"G2","description":"D2","color":"#017290","startDate":null,"endDate":null} |]
       let gid = extractId goalRes
       intentRes <- request "POST" "/intentions/weekly" [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Practice","description":"30m","rate":"1/1","deadline":{"monday":[19],"tuesday":[],"wednesday":[19],"thursday":[],"friday":[19],"saturday":[10],"sunday":[]},"goalIds":[#{gid}]} |]
       let iid = extractId intentRes
