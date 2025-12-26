@@ -64,5 +64,11 @@ subscriptions _ =
 view : Model -> View Msg
 view _ =
     { title = "Home"
-    , body = [ Html.text "Hello, World!" ]
+    , body =
+        [ Html.blockquote []
+            [ Html.text "To achieve great things, two things are needed: a plan, and not quite enough time."
+            , Html.br [] []
+            , Html.text "— Leonard Bernstein"
+            ]
+        ]
     }
