@@ -14,7 +14,7 @@ where
 
 import Control.Lens ((&), (.~), (?~))
 import Data.Aeson (ToJSON (toJSON))
-import Data.HashMap.Strict.InsOrd qualified as IOHM
+import Data.HashMap.Strict.InsOrd.Compat qualified as IOHM
 import Data.Swagger
 import Data.Swagger qualified as S
 import Data.Text (Text)
