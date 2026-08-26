@@ -25,7 +25,7 @@ jobs:
         working-directory: hit-cli
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Haskell
         id: setup
@@ -76,7 +76,7 @@ jobs:
         working-directory: hit-cli
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup HLint
         uses: haskell-actions/hlint-setup@v2
