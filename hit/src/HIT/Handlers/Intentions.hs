@@ -36,6 +36,9 @@ import HIT.DB
     ensureGoalsBelongToUser,
     getIntentionWithGoals,
     listIntentionsWithGoals,
+    listTodayCompletions,
+    markComplete,
+    unmarkComplete,
     updateIntention,
   )
 import HIT.DB.Schema (IntentionTableSelector)
@@ -52,6 +55,29 @@ intentionsServer conn user =
   listIntentionsHandler conn user
     :<|> crudServerTc (IntentionsResource @'Daily conn) user
     :<|> crudServerTc (IntentionsResource @'Weekly conn) user
+    :<|> todayCompletionsHandler conn user
+    :<|> markCompleteHandler conn user
+    :<|> unmarkCompleteHandler conn user
+
+todayCompletionsHandler :: Connection -> User -> Handler [Text]
+todayCompletionsHandler conn user =
+  liftIO $ map UUID.toText <$> listTodayCompletions conn (User.id user)
+
+markCompleteHandler :: Connection -> User -> Text -> Handler NoContent
+markCompleteHandler conn user iidTxt =
+  case UUID.fromText iidTxt of
+    Nothing -> throwError err400
+    Just iid -> do
+      liftIO $ markComplete conn (User.id user) iid
+      pure NoContent
+
+unmarkCompleteHandler :: Connection -> User -> Text -> Handler NoContent
+unmarkCompleteHandler conn user iidTxt =
+  case UUID.fromText iidTxt of
+    Nothing -> throwError err400
+    Just iid -> do
+      liftIO $ unmarkComplete conn (User.id user) iid
+      pure NoContent
 
 listIntentionsHandler :: Connection -> User -> Maybe Interval -> Handler [IntentionView]
 listIntentionsHandler conn user mInterval = do

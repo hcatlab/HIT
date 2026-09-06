@@ -25,6 +25,9 @@ type IntentionsApi =
   QueryParam "interval" Interval :> Get '[JSON] [IntentionView]
     :<|> "daily" :> IntentionApiFor 'Daily
     :<|> "weekly" :> IntentionApiFor 'Weekly
+    :<|> "completions" :> "today" :> Get '[JSON] [Text]
+    :<|> Capture "intentionId" Text :> "complete" :> Post '[JSON] NoContent
+    :<|> Capture "intentionId" Text :> "complete" :> Delete '[JSON] NoContent
 
 type IntentionApiFor (p :: Interval) =
   Get '[JSON] [IntentionResponse p]

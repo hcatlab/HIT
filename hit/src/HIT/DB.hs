@@ -5,12 +5,14 @@ module HIT.DB
     module HIT.DB.Goals,
     module HIT.DB.Habits,
     module HIT.DB.Intentions,
+    module HIT.DB.IntentionCompletions,
   )
 where
 
 import HIT.DB.Goals
 import HIT.DB.Habits
 import HIT.DB.Init
+import HIT.DB.IntentionCompletions
 import HIT.DB.Intentions
 import HIT.DB.Schema
 import HIT.DB.Users

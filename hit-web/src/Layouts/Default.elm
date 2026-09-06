@@ -84,7 +84,7 @@ view shared route { toContentMsg, content } =
             case shared.user of
                 Just user ->
                     { title = "HIT"
-                    , left = [ navLink "Goals" "/goals" ]
+                    , left = [ navLink "Goals" "/goals", navLink "Intentions" "/intentions" ]
                     , right = [ navLink user.id "/profile", navAction "Logout" Logout ]
                     }
 

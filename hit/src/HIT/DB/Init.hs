@@ -152,4 +152,17 @@ initDb conn = do
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createGoalIntentionsSql))
 
+  -- Create intention_completions table (tracks per-day completion of an intention)
+  let createIntentionCompletionsSql :: Text
+      createIntentionCompletionsSql =
+        T.unlines
+          [ "CREATE TABLE IF NOT EXISTS intention_completions (",
+            "  intention_id UUID NOT NULL REFERENCES intentions(id) ON DELETE CASCADE,",
+            "  completed_date DATE NOT NULL,",
+            "  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+            "  PRIMARY KEY (intention_id, completed_date)",
+            ")"
+          ]
+  _ <- PG.execute_ conn (fromString (T.unpack createIntentionCompletionsSql))
+
   putStrLn "Database schema initialized successfully"
