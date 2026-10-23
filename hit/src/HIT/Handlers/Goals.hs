@@ -8,12 +8,14 @@ module HIT.Handlers.Goals
   )
 where
 
+import Control.Exception (throwIO, try)
 import Control.Monad.IO.Class (liftIO)
 import Data.UUID (UUID)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam (Identity)
 import Database.PostgreSQL.Simple (Connection)
+import Database.PostgreSQL.Simple qualified as PG
 import HIT.Api.Goals (CreateGoalRequest (..), GoalResponse (..), UpdateGoalRequest (..))
 import HIT.Crud (CrudApiFor, CrudResource (..), crudServerTc)
 import HIT.DB (createGoal, deleteGoal, getGoal, listGoals, updateGoal)
@@ -42,7 +44,11 @@ instance CrudResource GoalsResource where
     _ <- requireNonEmpty "name" gname
     _ <- requireNonEmpty "description" gdesc
     gid <- liftIO UUIDv4.nextRandom
-    liftIO $ toGoalResponse <$> createGoal conn gid (User.id u) gname gdesc gcolor gstartDate gendDate
+    res <- liftIO $ try (createGoal conn gid (User.id u) gname gdesc gcolor gstartDate gendDate)
+    case res of
+      Left e | PG.sqlState e == "23505" -> throwError err409 {errBody = "Goal number conflict, retry"}
+      Left e -> liftIO (throwIO e)
+      Right g -> pure (toGoalResponse g)
 
   read (GoalsResource conn) u gid =
     liftIO $ fmap toGoalResponse <$> getGoal conn (User.id u) gid
