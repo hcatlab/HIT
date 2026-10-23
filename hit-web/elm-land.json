@@ -25,6 +25,8 @@
     "router": {
       "useHashRouting": false
     },
-    "proxy": null
+    "proxy": {
+      "/api": "http://localhost:8080"
+    }
   }
 }

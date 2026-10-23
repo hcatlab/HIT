@@ -4,7 +4,7 @@
 
 ## Setup
 
-Requires Node.js v18+ and backend running at `http://localhost:8080`
+Requires Node.js v18+ and backend running at `http://localhost:8080` (proxied as `/api`)
 
 ```bash
 npm install

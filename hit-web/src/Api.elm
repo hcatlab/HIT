@@ -31,7 +31,7 @@ errorToString httpError =
 
 baseUrl : String
 baseUrl =
-    "http://localhost:8080"
+    "/api"
 
 
 apiUrl : String -> String

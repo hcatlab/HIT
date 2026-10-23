@@ -18,7 +18,7 @@ import HIT.Handlers (goalsServer, habitsServer, intentionsServer, usersServer)
 import HIT.OpenApi (hitSwagger)
 import HIT.Types.User (ApiToken (..), User, UserT (..), toPublicUser)
 import Network.HTTP.Types.Header (hAuthorization)
-import Network.Wai (Request, requestHeaders)
+import Network.Wai (Middleware, Request, pathInfo, requestHeaders)
 import Network.Wai.Handler.Warp (run)
 import Network.Wai.Middleware.Cors
   ( CorsResourcePolicy (..),
@@ -42,11 +42,19 @@ type instance AuthServerData (AuthProtect "api-token") = User
 app :: Connection -> Application
 app conn =
   logStdout
+    $ stripApiPrefix
     $ cors corsPolicyForRequest
     $ serveWithContext
       (Proxy :: Proxy HITApiWithSwagger)
       (authHandler conn :. EmptyContext)
       (server conn)
+
+-- | serve under /api too, for same-origin proxies
+stripApiPrefix :: Middleware
+stripApiPrefix next req =
+  next $ case pathInfo req of
+    "api" : rest -> req {pathInfo = rest}
+    _ -> req
 
 -- | localhost/127.0.0.1/[::1] origin on any port
 corsPolicyForRequest :: Request -> Maybe CorsResourcePolicy
