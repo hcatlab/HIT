@@ -37,6 +37,7 @@ mkTestApp = do
   withResource (pool env) initDb
   pure (mkApp env)
 
+-- | skipped without DATABASE_URL
 tests :: IO TestTree
 tests = do
   mDbUrl <- lookupEnv "DATABASE_URL"
@@ -72,7 +73,7 @@ spec = with mkTestApp $ do
             pure (ct, mt)
           _ -> liftIO (fail "Goal response missing fields")
         _ -> liftIO (fail "Invalid goal response JSON")
-      -- Update goal and check modifiedAt changes
+      -- update goal, modifiedAt must increase
       _ <- request "PUT" (BS.append "/goals/" (Text.encodeUtf8 gid)) [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Build HIT+","description":"Updated desc","color":"#017290","startDate":"2023-01-01","endDate":null} |]
       updRes <- request "GET" (BS.append "/goals/" (Text.encodeUtf8 gid)) [authHeader tok] ""
       case eitherDecode (simpleBody updRes) of
@@ -118,7 +119,7 @@ spec = with mkTestApp $ do
             pure (ct, mt)
           _ -> liftIO (fail "Habit response missing fields")
         _ -> liftIO (fail "Invalid habit response JSON")
-      -- Update habit and check modifiedAt changes
+      -- update habit, modifiedAt must increase
       _ <- request "PUT" (BS.append "/habits/daily/" (Text.encodeUtf8 hid)) [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Drink+","description":"8 cups+","sort":true,"rate":"1/1","deadline":[10,12,15],"goalIds":[#{gid}]} |]
       updRes <- request "GET" (BS.append "/habits/daily/" (Text.encodeUtf8 hid)) [authHeader tok] ""
       case eitherDecode (simpleBody updRes) of
@@ -131,7 +132,7 @@ spec = with mkTestApp $ do
             liftIO $ if mt2 > modifiedAt then pure () else fail "modifiedAt should increase on update (habit)"
           _ -> liftIO (fail "Habit update response missing timestamps")
         _ -> liftIO (fail "Invalid habit update response JSON")
-      -- List check remains unchanged
+      -- list includes the update
       listHabits <- request "GET" "/habits?interval=daily" [authHeader tok] ""
       case eitherDecode (simpleBody listHabits) of
         Right (Array arr) -> do
@@ -169,7 +170,7 @@ spec = with mkTestApp $ do
             pure (ct, mt)
           _ -> liftIO (fail "Intention response missing fields")
         _ -> liftIO (fail "Invalid intention response JSON")
-      -- Update intention and check modifiedAt changes
+      -- update intention, modifiedAt must increase
       _ <- request "PUT" (BS.append "/intentions/weekly/" (Text.encodeUtf8 iid)) [authHeader tok, ("Content-Type", "application/json")] [json| {"name":"Practice+","description":"31m","rate":"1/1","deadline":{"monday":[20],"tuesday":[],"wednesday":[20],"thursday":[],"friday":[20],"saturday":[11],"sunday":[]},"goalIds":[#{gid}]} |]
       updRes <- request "GET" (BS.append "/intentions/weekly/" (Text.encodeUtf8 iid)) [authHeader tok] ""
       case eitherDecode (simpleBody updRes) of
@@ -182,7 +183,7 @@ spec = with mkTestApp $ do
             liftIO $ if mt2 > modifiedAt then pure () else fail "modifiedAt should increase on update (intention)"
           _ -> liftIO (fail "Intention update response missing timestamps")
         _ -> liftIO (fail "Invalid intention update response JSON")
-      -- List check remains unchanged
+      -- list includes the update
       listIntent <- request "GET" "/intentions?interval=weekly" [authHeader tok] ""
       case eitherDecode (simpleBody listIntent) of
         Right (Array arr) -> do
@@ -200,9 +201,7 @@ spec = with mkTestApp $ do
           liftIO $ unless hasItem (fail "Updated intention not found in /intentions?interval=weekly list")
         _ -> liftIO $ fail "Invalid /intentions list response JSON"
 
--- No tests when DATABASE_URL is not set; the group is marked as (skipped)
-
--- Helpers
+-- helpers
 authHeader :: Text -> (HeaderName, ByteString)
 authHeader tok = ("Authorization", BS.append "Bearer " (Text.encodeUtf8 tok))
 

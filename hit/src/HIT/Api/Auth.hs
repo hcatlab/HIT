@@ -9,7 +9,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import HIT.Types.User (ApiToken, PublicUser)
 
--- Signup
+-- * signup
 
 data SignupRequest = SignupRequest
   { id :: Text,
@@ -32,7 +32,7 @@ instance ToJSON SignupResponse
 
 instance FromJSON SignupResponse
 
--- Login
+-- * login
 
 data LoginRequest = LoginRequest
   { id :: Text,

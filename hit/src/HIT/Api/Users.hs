@@ -4,6 +4,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE TypeOperators #-}
 
+-- | users api and payloads
 module HIT.Api.Users where
 
 import Data.Aeson (FromJSON, ToJSON)
@@ -11,8 +12,6 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import Servant
-
--- Users API and payloads
 
 type UsersApi =
   Get '[JSON] [UserResponse]

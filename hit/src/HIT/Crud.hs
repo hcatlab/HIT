@@ -18,8 +18,7 @@ import HIT.Types.User (User)
 import Servant
 import Prelude hiding (id, read)
 
--- A generic CRUD API for user-scoped resources, parameterized by a path label
--- and request/response payload types. We capture the resource id as Text.
+-- | user-scoped crud routes, id captured as 'Text'
 type CrudApi (label :: Symbol) idCapture resp create update =
   Get '[JSON] [resp]
     :<|> ReqBody '[JSON] create :> Post '[JSON] resp
@@ -27,7 +26,7 @@ type CrudApi (label :: Symbol) idCapture resp create update =
     :<|> Capture label idCapture :> ReqBody '[JSON] update :> Put '[JSON] resp
     :<|> Capture label idCapture :> Delete '[JSON] NoContent
 
--- Typeclass-based CRUD definition with associated types.
+-- | crud resource with associated request/response types
 class CrudResource r where
   type Label r :: Symbol
   type InternalId r
@@ -42,10 +41,10 @@ class CrudResource r where
   update :: r -> User -> InternalId r -> UpdateReq r -> AppM (Maybe (Resp r))
   delete :: r -> User -> InternalId r -> AppM Bool
 
--- Convenience alias to get the API type from a CrudResource
+-- | 'CrudApi' for a 'CrudResource'
 type CrudApiFor r = CrudApi (Label r) Text (Resp r) (CreateReq r) (UpdateReq r)
 
--- Build a Server for any CrudResource and authenticated user.
+-- | server for a 'CrudResource' and authenticated user
 crudServerTc :: forall r. (CrudResource r) => r -> User -> ServerT (CrudApiFor r) AppM
 crudServerTc res user = listH :<|> createH :<|> getH :<|> updateH :<|> deleteH
   where

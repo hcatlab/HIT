@@ -24,7 +24,7 @@ import HIT.Types.Interval (Interval (..))
 import HIT.Types.User (UserT)
 import Prelude hiding (id)
 
--- Beam table for intentions parameterized by interval
+-- | beam table, indexed by interval
 data IntentionT (p :: Interval) f = Intention
   { id :: Columnar f UUID,
     user :: PrimaryKey UserT f,

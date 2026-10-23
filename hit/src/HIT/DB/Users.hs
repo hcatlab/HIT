@@ -68,7 +68,7 @@ createUser conn username_ email_ password_ = do
       pure u
     )
     `catch` \(e :: PG.SqlError) ->
-      -- Check for unique constraint violation (SQLSTATE 23505)
+      -- unique violation
       if PG.sqlState e == "23505"
         then pure (Left "username or email already exists")
         else throwIO e
@@ -104,7 +104,7 @@ lookupUserByToken conn (ApiToken tok) =
         guard_ (apiToken u ==. val_ tok)
         pure u
 
--- User CRUD operations
+-- user crud
 
 listAllUsers :: Connection -> IO [User]
 listAllUsers conn =
@@ -141,7 +141,7 @@ deleteUserById conn uid = do
         $ delete (users hitDb) (\u -> User.id u ==. val_ uid)
       pure True
 
--- Internal helpers
+-- internal helpers
 
 lookupUserById :: Connection -> Text -> IO (Maybe User)
 lookupUserById conn uid =

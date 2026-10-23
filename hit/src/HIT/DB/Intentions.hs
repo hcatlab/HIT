@@ -113,7 +113,7 @@ deleteIntention _ conn uid intentionId = do
         $ delete (intentionTable @p hitDb) (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
       pure True
 
--- Goal mapping helpers
+-- goal mapping helpers
 
 insertIntentionGoals :: Connection -> UUID -> NonEmpty UUID -> IO ()
 insertIntentionGoals conn iid goalIds =

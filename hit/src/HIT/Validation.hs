@@ -18,20 +18,20 @@ import HIT.DB (ensureGoalsBelongToUser)
 import HIT.Env (AppM, withDb)
 import Servant
 
--- 400 on bad uuid, deduped
+-- | 400 on bad uuid, deduped
 parseGoalIds :: (MonadError ServerError m) => NonEmpty Text -> m (NonEmpty UUID)
 parseGoalIds ids = case traverse UUID.fromText ids of
   Nothing -> throwError err400 {errBody = LBS.pack "Invalid goal id"}
   Just parsed -> pure (NE.nub parsed)
 
--- 400 unless all goals belong to user
+-- | 400 unless all goals belong to user
 validateGoalOwnership :: Text -> NonEmpty UUID -> AppM ()
 validateGoalOwnership uid goalIds = do
   ok <- withDb $ \conn -> ensureGoalsBelongToUser conn uid goalIds
   unless ok $
     throwError err400 {errBody = LBS.pack "goalIds must be non-empty and belong to the current user"}
 
--- 400 on blank text
+-- | 400 on blank text
 requireNonEmpty :: (MonadError ServerError m) => Text -> Text -> m Text
 requireNonEmpty fieldName value
   | T.null (T.strip value) =

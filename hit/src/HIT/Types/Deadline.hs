@@ -28,7 +28,7 @@ import Deriving.Aeson (CustomJSON (..), UnwrapUnaryRecords)
 import GHC.Generics (Generic)
 import HIT.Types.Interval (Interval (Daily, Weekly))
 
--- Shared constraint bundle for JSON codecs and DB storage
+-- | json codecs and db storage
 type DeadlineJson p = (DeadlineCodec p, FromJSON (Deadline p), ToJSON (Deadline p))
 
 newtype Hours = Hours {getHours :: [Int]}
@@ -82,7 +82,7 @@ instance DeadlineCodec 'Weekly where
       Right (wds :: Weekdays) -> Just (WeekHours wds)
       Left _ -> Nothing
 
--- Store Deadline as JSON in PostgreSQL
+-- | stored as json
 instance (DeadlineCodec p, ToJSON (Deadline p)) => HasSqlValueSyntax PgValueSyntax (Deadline p) where
   sqlValueSyntax = sqlValueSyntax . toJSON
 

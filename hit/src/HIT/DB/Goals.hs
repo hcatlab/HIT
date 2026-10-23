@@ -78,8 +78,7 @@ deleteGoal conn uid goalId = do
         $ delete (goals hitDb) (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
       pure True
 
--- Get next available goal number for a user.
--- Returns the smallest positive integer not currently in use by active (non-archived) goals.
+-- | smallest positive goal number not in use by the user
 getNextGoalNumber :: Connection -> Text -> IO Int
 getNextGoalNumber conn uid = do
   goals_ <- listGoals conn uid

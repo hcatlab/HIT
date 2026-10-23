@@ -116,7 +116,7 @@ deleteHabit _ conn uid habitId = do
         $ delete (habitTable @p hitDb) (\h -> Habit.id h ==. val_ habitId &&. Habit.user h ==. UserId (val_ uid) &&. Habit.interval h ==. val_ (intervalVal (Proxy @p)))
       pure True
 
--- Goal mapping helpers
+-- goal mapping helpers
 
 ensureGoalsBelongToUser :: Connection -> Text -> NonEmpty UUID -> IO Bool
 ensureGoalsBelongToUser conn uid goalIds = do

@@ -33,7 +33,7 @@ hitSwagger =
     & info . S.description ?~ "API for Habits, Intentions, and Time tracking. Protected endpoints require Bearer token authentication."
     & basePath ?~ "/api"
   where
-    -- Simplified API type for Swagger generation (without AuthProtect)
+    -- api without AuthProtect, for swagger
     unprotectedApi :: Proxy UnprotectedHITApi
     unprotectedApi = Proxy
 
@@ -47,9 +47,9 @@ type UnprotectedHITApi =
     :<|> Header' '[Required] "Authorization" Text :> "habits" :> HabitsApi
     :<|> Header' '[Required] "Authorization" Text :> "intentions" :> IntentionsApi
 
--- ToSchema instances for all types
+-- ToSchema instances
 
--- Interval
+-- interval
 instance ToSchema Interval where
   declareNamedSchema _ =
     return
@@ -65,7 +65,7 @@ instance ToParamSchema Interval where
       & type_ ?~ SwaggerString
       & enum_ ?~ ["daily", "weekly"]
 
--- Sort
+-- sort
 instance ToSchema Sort where
   declareNamedSchema _ =
     return
@@ -75,7 +75,7 @@ instance ToSchema Sort where
         & S.description ?~ "Sorting order: either yes/no or times count"
         & example ?~ toJSON (YesNo True)
 
--- Fraction
+-- fraction
 instance ToSchema Fraction where
   declareNamedSchema _ =
     return
@@ -86,7 +86,7 @@ instance ToSchema Fraction where
         & S.description ?~ "Fraction represented as 'numerator/denominator'"
         & example ?~ toJSON (Fraction 3 4)
 
--- State
+-- state
 instance ToSchema State where
   declareNamedSchema _ =
     return
@@ -96,7 +96,7 @@ instance ToSchema State where
         & enum_ ?~ ["active", "inactive", "deleted"]
         & S.description ?~ "Entity state"
 
--- Hours
+-- hours
 instance ToSchema Hours where
   declareNamedSchema _ =
     return
@@ -107,7 +107,7 @@ instance ToSchema Hours where
         & S.description ?~ "List of hours (0-23)"
         & example ?~ toJSON (Hours [9, 12, 15])
 
--- Weekdays
+-- weekdays
 instance ToSchema Weekdays where
   declareNamedSchema _ =
     return
@@ -127,7 +127,7 @@ instance ToSchema Weekdays where
         & required .~ ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
         & S.description ?~ "Hours for each day of the week"
 
--- Deadline instances (phantom-typed)
+-- deadline, per interval
 instance ToSchema (Deadline 'Daily) where
   declareNamedSchema _ =
     return
@@ -142,7 +142,7 @@ instance ToSchema (Deadline 'Weekly) where
       $ toSchema (Proxy :: Proxy Weekdays)
         & S.description ?~ "Weekly deadline (weekdays with hours)"
 
--- User types
+-- users
 instance ToSchema ApiToken where
   declareNamedSchema _ =
     return
@@ -165,7 +165,7 @@ instance ToSchema PublicUser where
         & required .~ ["id", "email"]
         & S.description ?~ "Public user information"
 
--- Auth API types
+-- auth api
 instance ToSchema SignupRequest where
   declareNamedSchema _ =
     return
@@ -223,7 +223,7 @@ instance ToSchema LoginResponse where
         & required .~ ["token", "user"]
         & S.description ?~ "Login response with auth token and user info"
 
--- Health API
+-- health api
 instance ToSchema HealthResponse where
   declareNamedSchema _ =
     return
@@ -234,7 +234,7 @@ instance ToSchema HealthResponse where
         & required .~ ["status"]
         & S.description ?~ "Health check response"
 
--- Goals API types
+-- goals api
 instance ToSchema CreateGoalRequest where
   declareNamedSchema _ =
     return
@@ -283,7 +283,7 @@ instance ToSchema GoalResponse where
         & required .~ ["id", "name", "state", "createdAt", "modifiedAt"]
         & S.description ?~ "Goal information"
 
--- Users API types
+-- users api
 instance ToSchema UserResponse where
   declareNamedSchema _ =
     return
@@ -320,7 +320,7 @@ instance ToSchema UpdateUserRequest where
         & required .~ ["email"]
         & S.description ?~ "Request to update a user"
 
--- Habits API types
+-- habits api
 instance ToSchema HabitDeadline where
   declareNamedSchema _ =
     return
@@ -458,7 +458,7 @@ instance ToSchema (HabitResponse 'Weekly) where
         & required .~ ["id", "name", "sort", "rate", "deadline", "createdAt", "modifiedAt"]
         & S.description ?~ "Weekly habit response"
 
--- Intentions API types
+-- intentions api
 instance ToSchema IntentionDeadline where
   declareNamedSchema _ =
     return

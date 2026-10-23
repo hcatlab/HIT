@@ -10,12 +10,12 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Database.PostgreSQL.Simple qualified as PG
 
--- | Initialize PostgreSQL database schema
+-- | create schema if missing
 initDb :: PG.Connection -> IO ()
 initDb conn = do
   putStrLn "Initializing PostgreSQL database schema..."
 
-  -- Enable UUID extension
+  -- uuid extension
   let createUuidExtensionSql :: Text
       createUuidExtensionSql =
         T.unlines
@@ -23,7 +23,7 @@ initDb conn = do
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createUuidExtensionSql))
 
-  -- Create enum type for interval values
+  -- interval enum
   let createIntervalEnumSql :: Text
       createIntervalEnumSql =
         T.unlines
@@ -37,7 +37,7 @@ initDb conn = do
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createIntervalEnumSql))
 
-  -- Create users table
+  -- users
   let createUsersSql :: Text
       createUsersSql =
         T.unlines
@@ -53,7 +53,7 @@ initDb conn = do
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createUsersSql))
 
-  -- Create goals table (uuid ids)
+  -- goals
   let createGoalsSql :: Text
       createGoalsSql =
         T.unlines
@@ -76,7 +76,7 @@ initDb conn = do
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createGoalsSql))
 
-  -- Create unified habits table (uuid ids)
+  -- habits, daily and weekly
   let createHabitsSql :: Text
       createHabitsSql =
         T.unlines
@@ -96,7 +96,7 @@ initDb conn = do
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createHabitsSql))
 
-  -- Create goal_habits mapping table
+  -- goal_habits mapping
   let createGoalHabitsSql :: Text
       createGoalHabitsSql =
         T.unlines
@@ -108,7 +108,7 @@ initDb conn = do
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createGoalHabitsSql))
 
-  -- Create unified intentions table (uuid ids)
+  -- intentions, daily and weekly
   let createIntentionsSql :: Text
       createIntentionsSql =
         T.unlines
@@ -127,7 +127,7 @@ initDb conn = do
           ]
   _ <- PG.execute_ conn (fromString (T.unpack createIntentionsSql))
 
-  -- Create goal_intentions mapping table
+  -- goal_intentions mapping
   let createGoalIntentionsSql :: Text
       createGoalIntentionsSql =
         T.unlines

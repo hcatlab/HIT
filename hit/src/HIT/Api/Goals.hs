@@ -4,6 +4,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE TypeOperators #-}
 
+-- | goals api and payloads
 module HIT.Api.Goals where
 
 import Data.Aeson (FromJSON, ToJSON)
@@ -11,8 +12,6 @@ import Data.Text (Text)
 import Data.Time (Day, UTCTime)
 import GHC.Generics (Generic)
 import Servant
-
--- Goals API and payloads
 
 type GoalsApi =
   Get '[JSON] [GoalResponse]

@@ -121,7 +121,7 @@ instance Arbitrary Sort where
           then YesNo <$> arbitrary
           else Times <$> arbitrary
 
--- Habits arbitrary instances for API payloads
+-- habits api payloads
 instance Arbitrary HabitDeadline where
   arbitrary = do
     interval <- arbitrary :: Gen Interval
@@ -129,12 +129,12 @@ instance Arbitrary HabitDeadline where
       Daily -> DailyDeadline <$> arbitrary
       Weekly -> WeeklyDeadline <$> arbitrary
 
--- Habit view (unified list)
+-- habit view, unified list
 
 instance Arbitrary UTCTime where
   arbitrary = pure (read "2023-01-01 00:00:00 UTC")
 
--- Goals CRUD payloads and responses
+-- goals crud payloads and responses
 nonEmptyText :: Gen Text
 nonEmptyText = arbitrary `suchThat` (not . T.null)
 
@@ -171,7 +171,7 @@ instance Arbitrary HabitView where
       <*> pure createdAt
       <*> pure modifiedAt
 
--- Habit CRUD payloads and responses (p-parameterized)
+-- habit crud payloads and responses, per interval
 instance Arbitrary (CreateHabitRequest 'Daily) where
   arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> nonEmptyTextGen
 
@@ -190,7 +190,7 @@ instance Arbitrary (HabitResponse 'Daily) where
 instance Arbitrary (HabitResponse 'Weekly) where
   arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> (arbitrary :: Gen [Text]) <*> arbitrary <*> arbitrary
 
--- Intentions arbitrary instances for API payloads
+-- intentions api payloads
 instance Arbitrary IntentionDeadline where
   arbitrary = do
     interval <- arbitrary :: Gen Interval
@@ -198,7 +198,7 @@ instance Arbitrary IntentionDeadline where
       Daily -> DailyIntentionDeadline <$> arbitrary
       Weekly -> WeeklyIntentionDeadline <$> arbitrary
 
--- Intention view (unified list)
+-- intention view, unified list
 instance Arbitrary IntentionView where
   arbitrary = do
     interval <- arbitrary :: Gen Interval
@@ -219,7 +219,7 @@ instance Arbitrary IntentionView where
       <*> pure createdAt
       <*> pure modifiedAt
 
--- Intention CRUD payloads and responses (p-parameterized)
+-- intention crud payloads and responses, per interval
 instance Arbitrary (CreateIntentionRequest 'Daily) where
   arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> nonEmptyTextGen
 
@@ -244,7 +244,7 @@ instance Arbitrary ApiToken where
 instance Arbitrary PublicUser where
   arbitrary = PublicUser <$> arbitrary <*> arbitrary
 
--- Test tree
+-- test tree
 tests :: TestTree
 tests =
   testGroup
@@ -260,11 +260,11 @@ tests =
           testProperty "encodeDecode Deadline Daily" (encodeDecode :: Deadline Daily -> Property),
           testProperty "encodeDecode Deadline Weekly" (encodeDecode :: Deadline Weekly -> Property),
           testProperty "encodeDecode Sort" (encodeDecode :: Sort -> Property),
-          -- Goals CRUD payloads and responses
+          -- goals crud payloads and responses
           testProperty "encodeDecode CreateGoalRequest" (encodeDecode :: CreateGoalRequest -> Property),
           testProperty "encodeDecode UpdateGoalRequest" (encodeDecode :: UpdateGoalRequest -> Property),
           testProperty "encodeDecode GoalResponse" (encodeDecode :: GoalResponse -> Property),
-          -- Habits unified list view and p-parameterized CRUD payloads
+          -- habits unified list view and per-interval crud payloads
           testProperty "encodeDecode HabitView" (encodeDecode :: HabitView -> Property),
           testProperty "encodeDecode CreateHabitRequest Daily" (encodeDecode :: CreateHabitRequest 'Daily -> Property),
           testProperty "encodeDecode CreateHabitRequest Weekly" (encodeDecode :: CreateHabitRequest 'Weekly -> Property),
@@ -272,7 +272,7 @@ tests =
           testProperty "encodeDecode UpdateHabitRequest Weekly" (encodeDecode :: UpdateHabitRequest 'Weekly -> Property),
           testProperty "encodeDecode HabitResponse Daily" (encodeDecode :: HabitResponse 'Daily -> Property),
           testProperty "encodeDecode HabitResponse Weekly" (encodeDecode :: HabitResponse 'Weekly -> Property),
-          -- Intentions unified list view and p-parameterized CRUD payloads
+          -- intentions unified list view and per-interval crud payloads
           testProperty "encodeDecode IntentionView" (encodeDecode :: IntentionView -> Property),
           testProperty "encodeDecode CreateIntentionRequest Daily" (encodeDecode :: CreateIntentionRequest 'Daily -> Property),
           testProperty "encodeDecode CreateIntentionRequest Weekly" (encodeDecode :: CreateIntentionRequest 'Weekly -> Property),

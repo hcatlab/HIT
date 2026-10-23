@@ -24,7 +24,7 @@ import HIT.Api.Users
 import HIT.Types.User (PublicUser)
 import Servant
 
--- | API type definition for HIT backend
+-- | hit backend api
 type HITApi =
   "health" :> Get '[JSON] HealthResponse
     :<|> "signup" :> ReqBody '[JSON] SignupRequest :> Post '[JSON] SignupResponse
@@ -35,5 +35,5 @@ type HITApi =
     :<|> AuthProtect "api-token" :> "habits" :> HabitsApi
     :<|> AuthProtect "api-token" :> "intentions" :> IntentionsApi
 
--- | API with Swagger endpoint included
+-- | 'HITApi' plus swagger.json
 type HITApiWithSwagger = HITApi :<|> "swagger.json" :> Get '[JSON] Swagger

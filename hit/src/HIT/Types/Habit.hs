@@ -25,7 +25,7 @@ import HIT.Types.Sort (Sort)
 import HIT.Types.User (UserT)
 import Prelude hiding (id)
 
--- Beam table for habits parameterized by interval
+-- | beam table, indexed by interval
 data HabitT (p :: Interval) f = Habit
   { id :: Columnar f UUID,
     user :: PrimaryKey UserT f,
@@ -57,5 +57,3 @@ deriving instance Show (PrimaryKey (HabitT p) Identity)
 deriving instance Eq (PrimaryKey (HabitT p) Identity)
 
 instance Beamable (PrimaryKey (HabitT p))
-
--- Store Fraction and Deadline p as TEXT via JSON encoding

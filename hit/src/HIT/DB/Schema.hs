@@ -30,7 +30,8 @@ data HITDb f = HITDb
 
 instance Database Postgres HITDb
 
--- Mapping tables between goals and habits/intentions
+-- * goal mapping tables
+
 data HabitGoalT f = HabitGoal
   { habitId :: Columnar f UUID,
     goalId :: Columnar f UUID
@@ -131,7 +132,7 @@ hitDb =
               )
       }
 
--- Shared table configuration for daily/weekly habits stored in one physical table
+-- | daily and weekly habits share one physical table
 habitTableSettings :: EntityModification (DatabaseEntity be db) be (TableEntity (HabitT p))
 habitTableSettings =
   setEntityName "habits"
@@ -149,7 +150,7 @@ habitTableSettings =
           (fieldNamed "modified_at")
       )
 
--- Shared table configuration for daily/weekly intentions stored in one physical table
+-- | daily and weekly intentions share one physical table
 intentionTableSettings :: EntityModification (DatabaseEntity be db) be (TableEntity (IntentionT p))
 intentionTableSettings =
   setEntityName "intentions"

@@ -19,8 +19,7 @@ import HIT.Types.Fraction (Fraction)
 import HIT.Types.Interval (Interval (Daily, Weekly))
 import Servant
 
--- Intentions API: unified list + p-parameterized CRUD subroutes
-
+-- | unified list plus per-interval crud routes
 type IntentionsApi =
   QueryParam "interval" Interval :> Get '[JSON] [IntentionView]
     :<|> "daily" :> IntentionApiFor 'Daily
@@ -33,7 +32,8 @@ type IntentionApiFor (p :: Interval) =
     :<|> Capture "intentionId" Text :> ReqBody '[JSON] (UpdateIntentionRequest p) :> Put '[JSON] (IntentionResponse p)
     :<|> Capture "intentionId" Text :> Delete '[JSON] NoContent
 
--- p-parameterized payloads for CRUD
+-- * per-interval crud payloads
+
 data CreateIntentionRequest (p :: Interval) = CreateIntentionRequest
   { name :: Text,
     description :: Maybe Text,
@@ -82,7 +82,8 @@ instance FromJSON (IntentionResponse 'Daily)
 
 instance FromJSON (IntentionResponse 'Weekly)
 
--- Unified list view
+-- * unified list view, deadline as a sum
+
 data IntentionDeadline
   = DailyIntentionDeadline (Deadline 'Daily)
   | WeeklyIntentionDeadline (Deadline 'Weekly)

@@ -20,8 +20,7 @@ import HIT.Types.Interval (Interval (Daily, Weekly))
 import HIT.Types.Sort (Sort)
 import Servant
 
--- Habits API: unified list + p-parameterized CRUD subroutes
-
+-- | unified list plus per-interval crud routes
 type HabitsApi =
   QueryParam "interval" Interval :> Get '[JSON] [HabitView]
     :<|> "daily" :> HabitApiFor 'Daily
@@ -34,7 +33,8 @@ type HabitApiFor (p :: Interval) =
     :<|> Capture "habitId" Text :> ReqBody '[JSON] (UpdateHabitRequest p) :> Put '[JSON] (HabitResponse p)
     :<|> Capture "habitId" Text :> Delete '[JSON] NoContent
 
--- p-parameterized payloads for CRUD
+-- * per-interval crud payloads
+
 data CreateHabitRequest (p :: Interval) = CreateHabitRequest
   { name :: Text,
     description :: Maybe Text,
@@ -86,7 +86,8 @@ instance FromJSON (HabitResponse 'Daily)
 
 instance FromJSON (HabitResponse 'Weekly)
 
--- Unified list view that includes interval and deadline as a sum
+-- * unified list view, deadline as a sum
+
 data HabitDeadline
   = DailyDeadline (Deadline 'Daily)
   | WeeklyDeadline (Deadline 'Weekly)
