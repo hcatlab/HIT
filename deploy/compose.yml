@@ -16,7 +16,7 @@ services:
     restart: unless-stopped
 
   hit-server:
-    image: docker.io/${DOCKERHUB_USERNAME:?}/hit:latest
+    image: ghcr.io/hcatlab/hit:latest
     environment:
       DATABASE_URL: postgresql://hit:${POSTGRES_PASSWORD}@postgres:5432/hit
     depends_on:
@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
 
   hit-web:
-    image: docker.io/${DOCKERHUB_USERNAME:?}/hit-web:latest
+    image: ghcr.io/hcatlab/hit-web:latest
     ports:
       - "127.0.0.1:${HIT_WEB_PORT:-8090}:80"
     depends_on:
