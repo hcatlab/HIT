@@ -50,10 +50,10 @@ seedUser conn (User uid uemail upw utoken createdAt modifiedAt) = do
   case mExisting of
     Just _ -> pure ()
     Nothing ->
-      runBeamPostgres conn $
-        runInsert $
-          insert (users hitDb) $
-            insertValues [User uid uemail upw utoken createdAt modifiedAt]
+      runBeamPostgres conn
+        $ runInsert
+        $ insert (users hitDb)
+        $ insertValues [User uid uemail upw utoken createdAt modifiedAt]
 
 createUser :: Connection -> Text -> Text -> Text -> IO (Either Text User)
 createUser conn username_ email_ password_ = do
@@ -62,10 +62,10 @@ createUser conn username_ email_ password_ = do
   now <- getCurrentTime
   let u = User username_ email_ pwHash tok now now
   ( Right <$> do
-      runBeamPostgres conn $
-        runInsert $
-          insert (users hitDb) $
-            insertValues [u]
+      runBeamPostgres conn
+        $ runInsert
+        $ insert (users hitDb)
+        $ insertValues [u]
       pure u
     )
     `catch` \(e :: PG.SqlError) ->
@@ -88,12 +88,12 @@ loginUser conn uname password_ = do
         then pure Nothing
         else do
           tok <- newToken
-          runBeamPostgres conn $
-            runUpdate $
-              update
-                (users hitDb)
-                (\row -> apiToken row <-. val_ tok)
-                (\row -> User.id row ==. val_ uname)
+          runBeamPostgres conn
+            $ runUpdate
+            $ update
+              (users hitDb)
+              (\row -> apiToken row <-. val_ tok)
+              (\row -> User.id row ==. val_ uname)
           pure (Just (u {apiToken = tok}))
 
 lookupUserByToken :: Connection -> ApiToken -> IO (Maybe User)
@@ -109,9 +109,9 @@ lookupUserByToken conn (ApiToken tok) =
 
 listAllUsers :: Connection -> IO [User]
 listAllUsers conn =
-  runBeamPostgres conn $
-    runSelectReturningList $
-      select (all_ (users hitDb))
+  runBeamPostgres conn
+    $ runSelectReturningList
+    $ select (all_ (users hitDb))
 
 getUserById :: Connection -> Text -> IO (Maybe User)
 getUserById = lookupUserById
@@ -123,12 +123,12 @@ updateUserEmail conn uid newEmail = do
     Nothing -> pure Nothing
     Just (User _ _ pwHash tok createdAtOld _) -> do
       now <- getCurrentTime
-      runBeamPostgres conn $
-        runUpdate $
-          update
-            (users hitDb)
-            (\u -> mconcat [email u <-. val_ newEmail, modifiedAt u <-. val_ now])
-            (\u -> User.id u ==. val_ uid)
+      runBeamPostgres conn
+        $ runUpdate
+        $ update
+          (users hitDb)
+          (\u -> mconcat [email u <-. val_ newEmail, modifiedAt u <-. val_ now])
+          (\u -> User.id u ==. val_ uid)
       pure (Just (User uid newEmail pwHash tok createdAtOld now))
 
 deleteUserById :: Connection -> Text -> IO Bool
@@ -137,9 +137,9 @@ deleteUserById conn uid = do
   case mExisting of
     Nothing -> pure False
     Just _ -> do
-      runBeamPostgres conn $
-        runDelete $
-          delete (users hitDb) (\u -> User.id u ==. val_ uid)
+      runBeamPostgres conn
+        $ runDelete
+        $ delete (users hitDb) (\u -> User.id u ==. val_ uid)
       pure True
 
 -- Internal helpers

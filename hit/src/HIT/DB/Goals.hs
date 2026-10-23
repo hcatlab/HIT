@@ -26,10 +26,10 @@ createGoal conn goalId uid gname gdesc gcolor gstartDate gendDate = do
   nextNum <- getNextGoalNumber conn uid
   let effectiveStart = fromMaybe (utctDay now) gstartDate
   let g = Goal goalId (UserId uid) gname gdesc (fromIntegral nextNum :: Integer) gcolor effectiveStart gendDate now now
-  runBeamPostgres conn $
-    runInsert $
-      insert (goals hitDb) $
-        insertValues [g]
+  runBeamPostgres conn
+    $ runInsert
+    $ insert (goals hitDb)
+    $ insertValues [g]
   pure g
 
 getGoal :: Connection -> Text -> UUID -> IO (Maybe Goal)
@@ -59,12 +59,12 @@ updateGoal conn uid goalId gname gdesc gcolor gstartDate gendDate = do
     Just Goal {} -> do
       now <- getCurrentTime
       _ <-
-        runBeamPostgres conn $
-          runUpdate $
-            update
-              (goals hitDb)
-              (\g -> mconcat [Goal.name g <-. val_ gname, Goal.description g <-. val_ gdesc, Goal.color g <-. val_ gcolor, Goal.startDate g <-. val_ gstartDate, Goal.endDate g <-. val_ gendDate, Goal.modifiedAt g <-. val_ now])
-              (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
+        runBeamPostgres conn
+          $ runUpdate
+          $ update
+            (goals hitDb)
+            (\g -> mconcat [Goal.name g <-. val_ gname, Goal.description g <-. val_ gdesc, Goal.color g <-. val_ gcolor, Goal.startDate g <-. val_ gstartDate, Goal.endDate g <-. val_ gendDate, Goal.modifiedAt g <-. val_ now])
+            (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
       getGoal conn uid goalId
 
 deleteGoal :: Connection -> Text -> UUID -> IO Bool
@@ -73,9 +73,9 @@ deleteGoal conn uid goalId = do
   case mExisting of
     Nothing -> pure False
     Just _ -> do
-      runBeamPostgres conn $
-        runDelete $
-          delete (goals hitDb) (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
+      runBeamPostgres conn
+        $ runDelete
+        $ delete (goals hitDb) (\g -> Goal.id g ==. val_ goalId &&. Goal.user g ==. UserId (val_ uid))
       pure True
 
 -- Get next available goal number for a user.

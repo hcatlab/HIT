@@ -38,10 +38,10 @@ createHabit :: forall p. (HabitTableSelector p, DeadlineJson p, IntervalTag p) =
 createHabit conn habitId uid hname hdesc hsort hrate hdeadline goalIds = do
   now <- getCurrentTime
   let h = Habit habitId (UserId uid) hname hdesc (intervalVal (Proxy @p)) hsort hrate hdeadline now now
-  runBeamPostgres conn $
-    runInsert $
-      insert (habitTable @p hitDb) $
-        insertValues [h]
+  runBeamPostgres conn
+    $ runInsert
+    $ insert (habitTable @p hitDb)
+    $ insertValues [h]
   insertHabitGoals conn habitId goalIds
   pure h
 
@@ -84,22 +84,22 @@ updateHabit conn uid habitId hname hdesc hsort hrate hdeadline goalIds = do
     Nothing -> pure Nothing
     Just (Habit _ _ _ _ _ _ _ _ createdAtOld _) -> do
       now <- getCurrentTime
-      runBeamPostgres conn $
-        runUpdate $
-          update
-            (habitTable @p hitDb)
-            ( \h ->
-                mconcat
-                  [ Habit.name h <-. val_ hname,
-                    Habit.description h <-. val_ hdesc,
-                    Habit.interval h <-. val_ (intervalVal (Proxy @p)),
-                    Habit.sort h <-. val_ hsort,
-                    Habit.rate h <-. val_ hrate,
-                    Habit.deadline h <-. val_ hdeadline,
-                    Habit.modifiedAt h <-. val_ now
-                  ]
-            )
-            (\h -> Habit.id h ==. val_ habitId &&. Habit.user h ==. UserId (val_ uid) &&. Habit.interval h ==. val_ (intervalVal (Proxy @p)))
+      runBeamPostgres conn
+        $ runUpdate
+        $ update
+          (habitTable @p hitDb)
+          ( \h ->
+              mconcat
+                [ Habit.name h <-. val_ hname,
+                  Habit.description h <-. val_ hdesc,
+                  Habit.interval h <-. val_ (intervalVal (Proxy @p)),
+                  Habit.sort h <-. val_ hsort,
+                  Habit.rate h <-. val_ hrate,
+                  Habit.deadline h <-. val_ hdeadline,
+                  Habit.modifiedAt h <-. val_ now
+                ]
+          )
+          (\h -> Habit.id h ==. val_ habitId &&. Habit.user h ==. UserId (val_ uid) &&. Habit.interval h ==. val_ (intervalVal (Proxy @p)))
       replaceHabitGoals conn habitId goalIds
       pure (Just (Habit habitId (UserId uid) hname hdesc (intervalVal (Proxy @p)) hsort hrate hdeadline createdAtOld now))
 
@@ -109,9 +109,9 @@ deleteHabit _ conn uid habitId = do
   case mExisting of
     Nothing -> pure False
     Just _ -> do
-      runBeamPostgres conn $
-        runDelete $
-          delete (habitTable @p hitDb) (\h -> Habit.id h ==. val_ habitId &&. Habit.user h ==. UserId (val_ uid) &&. Habit.interval h ==. val_ (intervalVal (Proxy @p)))
+      runBeamPostgres conn
+        $ runDelete
+        $ delete (habitTable @p hitDb) (\h -> Habit.id h ==. val_ habitId &&. Habit.user h ==. UserId (val_ uid) &&. Habit.interval h ==. val_ (intervalVal (Proxy @p)))
       pure True
 
 -- Goal mapping helpers
@@ -132,16 +132,16 @@ ensureGoalsBelongToUser conn uid goalIds = do
 
 insertHabitGoals :: Connection -> UUID -> NonEmpty UUID -> IO ()
 insertHabitGoals conn hid goalIds =
-  runBeamPostgres conn $
-    runInsert $
-      insert (habitGoals hitDb) $
-        insertValues (NE.toList (fmap (HabitGoal hid) goalIds))
+  runBeamPostgres conn
+    $ runInsert
+    $ insert (habitGoals hitDb)
+    $ insertValues (NE.toList (fmap (HabitGoal hid) goalIds))
 
 replaceHabitGoals :: Connection -> UUID -> NonEmpty UUID -> IO ()
 replaceHabitGoals conn hid goalIds = do
-  runBeamPostgres conn $
-    runDelete $
-      delete (habitGoals hitDb) (\hg -> habitId hg ==. val_ hid)
+  runBeamPostgres conn
+    $ runDelete
+    $ delete (habitGoals hitDb) (\hg -> habitId hg ==. val_ hid)
   insertHabitGoals conn hid goalIds
 
 listHabitGoals :: Connection -> Text -> UUID -> IO [UUID]

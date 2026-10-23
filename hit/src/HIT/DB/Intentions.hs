@@ -36,10 +36,10 @@ createIntention :: forall p. (IntentionTableSelector p, DeadlineJson p, Interval
 createIntention conn intentionId uid iname idesc irate ideadline goalIds = do
   now <- getCurrentTime
   let i = Intention intentionId (UserId uid) iname idesc (intervalVal (Proxy @p)) irate ideadline now now
-  runBeamPostgres conn $
-    runInsert $
-      insert (intentionTable @p hitDb) $
-        insertValues [i]
+  runBeamPostgres conn
+    $ runInsert
+    $ insert (intentionTable @p hitDb)
+    $ insertValues [i]
   insertIntentionGoals conn intentionId goalIds
   pure i
 
@@ -82,21 +82,21 @@ updateIntention conn uid intentionId iname idesc irate ideadline goalIds = do
     Nothing -> pure Nothing
     Just (Intention _ _ _ _ _ _ _ createdAtOld _) -> do
       now <- getCurrentTime
-      runBeamPostgres conn $
-        runUpdate $
-          update
-            (intentionTable @p hitDb)
-            ( \i ->
-                mconcat
-                  [ Intention.name i <-. val_ iname,
-                    Intention.description i <-. val_ idesc,
-                    Intention.interval i <-. val_ (intervalVal (Proxy @p)),
-                    Intention.rate i <-. val_ irate,
-                    Intention.deadline i <-. val_ ideadline,
-                    Intention.modifiedAt i <-. val_ now
-                  ]
-            )
-            (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
+      runBeamPostgres conn
+        $ runUpdate
+        $ update
+          (intentionTable @p hitDb)
+          ( \i ->
+              mconcat
+                [ Intention.name i <-. val_ iname,
+                  Intention.description i <-. val_ idesc,
+                  Intention.interval i <-. val_ (intervalVal (Proxy @p)),
+                  Intention.rate i <-. val_ irate,
+                  Intention.deadline i <-. val_ ideadline,
+                  Intention.modifiedAt i <-. val_ now
+                ]
+          )
+          (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
       replaceIntentionGoals conn intentionId goalIds
       pure (Just (Intention intentionId (UserId uid) iname idesc (intervalVal (Proxy @p)) irate ideadline createdAtOld now))
 
@@ -106,25 +106,25 @@ deleteIntention _ conn uid intentionId = do
   case mExisting of
     Nothing -> pure False
     Just _ -> do
-      runBeamPostgres conn $
-        runDelete $
-          delete (intentionTable @p hitDb) (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
+      runBeamPostgres conn
+        $ runDelete
+        $ delete (intentionTable @p hitDb) (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
       pure True
 
 -- Goal mapping helpers
 
 insertIntentionGoals :: Connection -> UUID -> NonEmpty UUID -> IO ()
 insertIntentionGoals conn iid goalIds =
-  runBeamPostgres conn $
-    runInsert $
-      insert (intentionGoals hitDb) $
-        insertValues (NE.toList (fmap (IntentionGoal iid) goalIds))
+  runBeamPostgres conn
+    $ runInsert
+    $ insert (intentionGoals hitDb)
+    $ insertValues (NE.toList (fmap (IntentionGoal iid) goalIds))
 
 replaceIntentionGoals :: Connection -> UUID -> NonEmpty UUID -> IO ()
 replaceIntentionGoals conn iid goalIds = do
-  runBeamPostgres conn $
-    runDelete $
-      delete (intentionGoals hitDb) (\ig -> intentionId ig ==. val_ iid)
+  runBeamPostgres conn
+    $ runDelete
+    $ delete (intentionGoals hitDb) (\ig -> intentionId ig ==. val_ iid)
   insertIntentionGoals conn iid goalIds
 
 listIntentionGoals :: Connection -> Text -> UUID -> IO [UUID]

@@ -42,12 +42,12 @@ type instance AuthServerData (AuthProtect "api-token") = User
 
 app :: Connection -> Application
 app conn =
-  logStdout $
-    cors corsPolicyForRequest $
-      serveWithContext
-        (Proxy :: Proxy HITApiWithSwagger)
-        (authHandler conn :. EmptyContext)
-        (server conn)
+  logStdout
+    $ cors corsPolicyForRequest
+    $ serveWithContext
+      (Proxy :: Proxy HITApiWithSwagger)
+      (authHandler conn :. EmptyContext)
+      (server conn)
 
 -- | localhost/127.0.0.1/[::1] origin on any port
 corsPolicyForRequest :: Request -> Maybe CorsResourcePolicy
