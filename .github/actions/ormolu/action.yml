@@ -1,0 +1,26 @@
+name: ormolu
+description: check haskell formatting with ormolu
+inputs:
+  version:
+    description: ormolu release
+    default: 0.9.0.0
+  pattern:
+    description: git pathspecs, one per line
+    default: "*.hs"
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        VERSION: ${{ inputs.version }}
+        PATTERN: ${{ inputs.pattern }}
+      run: |
+        curl -fsSL -o "$RUNNER_TEMP/ormolu.zip" "https://github.com/tweag/ormolu/releases/download/$VERSION/ormolu-x86_64-linux.zip"
+        unzip -oq -d "$RUNNER_TEMP" "$RUNNER_TEMP/ormolu.zip"
+        set -f
+        mapfile -t files < <(git ls-files -- $PATTERN)
+        set +f
+        if [ ${#files[@]} -eq 0 ]; then echo "::error::no files match $PATTERN"; exit 1; fi
+        "$RUNNER_TEMP/ormolu" --version
+        "$RUNNER_TEMP/ormolu" --color always --check-idempotence --mode check "${files[@]}"

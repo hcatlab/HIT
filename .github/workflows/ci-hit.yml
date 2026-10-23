@@ -101,11 +101,11 @@ jobs:
         uses: haskell-actions/hlint-run@v2
 
       - name: Check formatting with Ormolu
-        uses: haskell-actions/run-ormolu@v21
+        uses: ./.github/actions/ormolu
         with:
           pattern: |
-            hit/src/**/*.hs
-            hit/app/**/*.hs
+            hit/src/*.hs
+            hit/app/*.hs
 
   docker:
     name: Build and publish Docker image
@@ -138,6 +138,8 @@ jobs:
           context: .
           file: Dockerfile
           push: true
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           tags: |

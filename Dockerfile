@@ -16,14 +16,14 @@ COPY cabal.project ./
 COPY hit/hit.cabal hit/
 COPY hit-cli/hit-cli.cabal hit-cli/
 
+RUN cabal update && \
+    cabal configure --disable-documentation --disable-tests --disable-benchmarks && \
+    cabal build hit --only-dependencies
+
 COPY hit/src hit/src
 COPY hit/app hit/app
 COPY hit/test hit/test
 COPY hit-cli/src hit-cli/src
-
-RUN cabal update && \
-    cabal configure --disable-documentation --disable-tests --disable-benchmarks && \
-    cabal build hit:hit-server --only-dependencies
 
 RUN cabal build hit:hit-server
 
