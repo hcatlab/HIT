@@ -14,9 +14,8 @@ module HIT.DB.Users
   )
 where
 
-import Control.Exception (catch)
+import Control.Exception (catch, throwIO)
 import Crypto.BCrypt (hashPasswordUsingPolicy, slowerBcryptHashingPolicy, validatePassword)
-import Data.ByteString.Char8 qualified as BS8
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Time (getCurrentTime)
@@ -72,7 +71,7 @@ createUser conn username_ email_ password_ = do
       -- Check for unique constraint violation (SQLSTATE 23505)
       if PG.sqlState e == "23505"
         then pure (Left "username or email already exists")
-        else pure (Left (Text.decodeUtf8 (BS8.pack (show e))))
+        else throwIO e
 
 loginUser :: Connection -> Text -> Text -> IO (Maybe User)
 loginUser conn uname password_ = do
