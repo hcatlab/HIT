@@ -21,6 +21,7 @@ RUN cabal update && \
     cabal build hit --only-dependencies
 
 COPY hit/src hit/src
+COPY hit/migrations hit/migrations
 COPY hit/app hit/app
 COPY hit/test hit/test
 COPY hit-cli/src hit-cli/src

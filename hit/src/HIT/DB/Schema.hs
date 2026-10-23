@@ -7,9 +7,13 @@
 
 module HIT.DB.Schema where
 
+import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import Database.Beam
+import Database.Beam.Migrate
 import Database.Beam.Postgres (Postgres)
+import Database.Beam.Postgres.Migrate qualified as Pg
+import Database.Beam.Postgres.Syntax (pgJsonType)
 import HIT.Types.Goal (GoalT (..))
 import HIT.Types.Habit (HabitT (..))
 import HIT.Types.Intention (IntentionT (..))
@@ -82,87 +86,98 @@ instance IntentionTableSelector 'Daily where
 instance IntentionTableSelector 'Weekly where
   intentionTable = intentionsWeekly
 
+-- * schema
+
+-- | names and sql types, verified against the live db by 'HIT.DB.Migrate.migrate'
+checkedHitDb :: CheckedDatabaseSettings Postgres HITDb
+checkedHitDb =
+  runMigrationSilenced $
+    HITDb
+      <$> createTable
+        "users"
+        ( User
+            (field "id" Pg.text notNull)
+            (field "email" Pg.text notNull)
+            (field "password_hash" Pg.text notNull)
+            (field "api_token" Pg.text notNull)
+            (field "created_at" utcTime notNull)
+            (field "modified_at" utcTime notNull)
+        )
+      <*> createTable
+        "goals"
+        ( Goal
+            (field "id" Pg.uuid notNull)
+            (UserId (field "user" Pg.text notNull))
+            (field "name" Pg.text notNull)
+            (field "description" Pg.text notNull)
+            (field "number" int notNull)
+            (field "color" Pg.text notNull)
+            (field "start_date" date notNull)
+            (field "end_date" (maybeType date))
+            (field "created_at" utcTime notNull)
+            (field "modified_at" utcTime notNull)
+        )
+      <*> habitsSchema
+      <*> habitsSchema
+      <*> intentionsSchema
+      <*> intentionsSchema
+      <*> createTable
+        "goal_habits"
+        ( HabitGoal
+            (field "habit_id" Pg.uuid notNull)
+            (field "goal_id" Pg.uuid notNull)
+        )
+      <*> createTable
+        "goal_intentions"
+        ( IntentionGoal
+            (field "intention_id" Pg.uuid notNull)
+            (field "goal_id" Pg.uuid notNull)
+        )
+
 hitDb :: DatabaseSettings Postgres HITDb
-hitDb =
-  defaultDbSettings
-    `withDbModification` HITDb
-      { users =
-          setEntityName "users"
-            <> modifyTableFields
-              ( User
-                  (fieldNamed "id")
-                  (fieldNamed "email")
-                  (fieldNamed "password_hash")
-                  (fieldNamed "api_token")
-                  (fieldNamed "created_at")
-                  (fieldNamed "modified_at")
-              ),
-        goals =
-          setEntityName "goals"
-            <> modifyTableFields
-              ( Goal
-                  (fieldNamed "id")
-                  (UserId (fieldNamed "user"))
-                  (fieldNamed "name")
-                  (fieldNamed "description")
-                  (fieldNamed "number")
-                  (fieldNamed "color")
-                  (fieldNamed "start_date")
-                  (fieldNamed "end_date")
-                  (fieldNamed "created_at")
-                  (fieldNamed "modified_at")
-              ),
-        habitsDaily = habitTableSettings,
-        habitsWeekly = habitTableSettings,
-        intentionsDaily = intentionTableSettings,
-        intentionsWeekly = intentionTableSettings,
-        habitGoals =
-          setEntityName "goal_habits"
-            <> modifyTableFields
-              ( HabitGoal
-                  (fieldNamed "habit_id")
-                  (fieldNamed "goal_id")
-              ),
-        intentionGoals =
-          setEntityName "goal_intentions"
-            <> modifyTableFields
-              ( IntentionGoal
-                  (fieldNamed "intention_id")
-                  (fieldNamed "goal_id")
-              )
-      }
+hitDb = unCheckDatabase checkedHitDb
 
 -- | daily and weekly habits share one physical table
-habitTableSettings :: EntityModification (DatabaseEntity be db) be (TableEntity (HabitT p))
-habitTableSettings =
-  setEntityName "habits"
-    <> modifyTableFields
-      ( Habit
-          (fieldNamed "id")
-          (UserId (fieldNamed "user"))
-          (fieldNamed "name")
-          (fieldNamed "description")
-          (fieldNamed "interval")
-          (fieldNamed "sort")
-          (fieldNamed "rate")
-          (fieldNamed "deadline")
-          (fieldNamed "created_at")
-          (fieldNamed "modified_at")
-      )
+habitsSchema :: (Typeable p) => Migration Postgres (CheckedDatabaseEntity Postgres db (TableEntity (HabitT p)))
+habitsSchema =
+  createTable
+    "habits"
+    ( Habit
+        (field "id" Pg.uuid notNull)
+        (UserId (field "user" Pg.text notNull))
+        (field "name" Pg.text notNull)
+        (field "description" (maybeType Pg.text))
+        (field "interval" (retype Pg.text) notNull)
+        (field "sort" jsonType notNull)
+        (field "rate" jsonType notNull)
+        (field "deadline" jsonType notNull)
+        (field "created_at" utcTime notNull)
+        (field "modified_at" utcTime notNull)
+    )
 
 -- | daily and weekly intentions share one physical table
-intentionTableSettings :: EntityModification (DatabaseEntity be db) be (TableEntity (IntentionT p))
-intentionTableSettings =
-  setEntityName "intentions"
-    <> modifyTableFields
-      ( Intention
-          (fieldNamed "id")
-          (UserId (fieldNamed "user"))
-          (fieldNamed "name")
-          (fieldNamed "description")
-          (fieldNamed "interval")
-          (fieldNamed "rate")
-          (fieldNamed "deadline")
-          (fieldNamed "created_at")
-          (fieldNamed "modified_at")
-      )
+intentionsSchema :: (Typeable p) => Migration Postgres (CheckedDatabaseEntity Postgres db (TableEntity (IntentionT p)))
+intentionsSchema =
+  createTable
+    "intentions"
+    ( Intention
+        (field "id" Pg.uuid notNull)
+        (UserId (field "user" Pg.text notNull))
+        (field "name" Pg.text notNull)
+        (field "description" (maybeType Pg.text))
+        (field "interval" (retype Pg.text) notNull)
+        (field "rate" jsonType notNull)
+        (field "deadline" jsonType notNull)
+        (field "created_at" utcTime notNull)
+        (field "modified_at" utcTime notNull)
+    )
+
+-- | same sql type at another haskell type
+retype :: DataType be a -> DataType be b
+retype (DataType t) = DataType t
+
+utcTime :: DataType Postgres UTCTime
+utcTime = retype timestamptz
+
+jsonType :: DataType Postgres a
+jsonType = DataType pgJsonType

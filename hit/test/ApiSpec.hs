@@ -19,7 +19,7 @@ import Data.Time.Format (defaultTimeLocale, parseTimeM)
 import Data.Vector qualified as V
 import HIT.App (mkApp)
 import HIT.Config (loadConfig)
-import HIT.DB (initDb)
+import HIT.DB (migrate)
 import HIT.Env (Env (..), newEnv)
 import Network.HTTP.Types (HeaderName)
 import Network.Wai (Application)
@@ -34,7 +34,7 @@ import Test.Tasty.Hspec (testSpec)
 mkTestApp :: IO Application
 mkTestApp = do
   env <- loadConfig >>= newEnv
-  withResource (pool env) initDb
+  withResource (pool env) migrate
   pure (mkApp env)
 
 -- | skipped without DATABASE_URL

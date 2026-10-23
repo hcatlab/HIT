@@ -7,6 +7,7 @@ author:
 maintainer:
 category:      Web
 build-type:    Simple
+extra-source-files: migrations/*.sql
 
 library
   exposed-modules:
@@ -23,8 +24,8 @@ library
     HIT.DB
     HIT.DB.Goals
     HIT.DB.Habits
-    HIT.DB.Init
     HIT.DB.Intentions
+    HIT.DB.Migrate
     HIT.DB.Schema
     HIT.DB.Users
     HIT.Env
@@ -50,15 +51,18 @@ library
     , aeson                      >=2.2.3.0
     , base                       >=4.18
     , bcrypt                     >=0.0.11
-    , beam-core                  >=0.10.4.0
-    , beam-postgres              >=0.5.4.4
+    , beam-core                  >=0.11
+    , beam-migrate               >=0.6
+    , beam-postgres              >=0.6
     , bytestring                 >=0.11
     , containers                 >=0.6
     , deriving-aeson             >=0.2.10
+    , file-embed                 >=0.0.15
     , http-types                 >=0.12.4
     , insert-ordered-containers  >=0.2.7
     , lens                       >=5.3.5
     , mtl                        >=2.3
+    , postgresql-migration       >=0.2.1.8
     , postgresql-simple          >=0.7.0.1
     , resource-pool              >=0.4.0.0
     , servant                    >=0.20.3.0
