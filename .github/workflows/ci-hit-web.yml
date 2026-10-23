@@ -24,30 +24,15 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
-
-      - name: Cache npm
-        uses: actions/cache@v6
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('hit-web/package-lock.json', 'hit-web/npm-shrinkwrap.json', 'hit-web/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: hit-web/package-lock.json
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Install elm-format
-        run: |
-          npm install -g elm-format
-          echo "$(npm bin -g)" >> $GITHUB_PATH
+        run: npm ci
 
       - name: Check Elm formatting
-        uses: sparksp/elm-format-action@v1
-        with:
-          elm_format: elm-format
-          elm_files: hit-web/src/**/*.elm
-          elm_glob: true
+        run: npx elm-format --validate src
 
       - name: Build
         run: npm run build
