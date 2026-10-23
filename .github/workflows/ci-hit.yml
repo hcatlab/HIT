@@ -104,8 +104,8 @@ jobs:
         uses: haskell-actions/run-ormolu@v21
         with:
           pattern: |
-            src/**/*.hs
-            app/**/*.hs
+            hit/src/**/*.hs
+            hit/app/**/*.hs
 
   docker:
     name: Build and publish Docker image
