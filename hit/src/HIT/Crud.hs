@@ -13,6 +13,7 @@ where
 
 import Data.Text (Text)
 import GHC.TypeLits (Symbol)
+import HIT.Env (AppM)
 import HIT.Types.User (User)
 import Servant
 import Prelude hiding (id, read)
@@ -35,17 +36,17 @@ class CrudResource r where
   type Resp r
 
   parseId :: r -> Text -> Maybe (InternalId r)
-  list :: r -> User -> Handler [Resp r]
-  create :: r -> User -> CreateReq r -> Handler (Resp r)
-  read :: r -> User -> InternalId r -> Handler (Maybe (Resp r))
-  update :: r -> User -> InternalId r -> UpdateReq r -> Handler (Maybe (Resp r))
-  delete :: r -> User -> InternalId r -> Handler Bool
+  list :: r -> User -> AppM [Resp r]
+  create :: r -> User -> CreateReq r -> AppM (Resp r)
+  read :: r -> User -> InternalId r -> AppM (Maybe (Resp r))
+  update :: r -> User -> InternalId r -> UpdateReq r -> AppM (Maybe (Resp r))
+  delete :: r -> User -> InternalId r -> AppM Bool
 
 -- Convenience alias to get the API type from a CrudResource
 type CrudApiFor r = CrudApi (Label r) Text (Resp r) (CreateReq r) (UpdateReq r)
 
 -- Build a Server for any CrudResource and authenticated user.
-crudServerTc :: forall r. (CrudResource r) => r -> User -> Server (CrudApiFor r)
+crudServerTc :: forall r. (CrudResource r) => r -> User -> ServerT (CrudApiFor r) AppM
 crudServerTc res user = listH :<|> createH :<|> getH :<|> updateH :<|> deleteH
   where
     listH = list res user

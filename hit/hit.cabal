@@ -17,6 +17,8 @@ library
     HIT.Api.Health
     HIT.Api.Intentions
     HIT.Api.Users
+    HIT.App
+    HIT.Config
     HIT.Crud
     HIT.DB
     HIT.DB.Goals
@@ -25,6 +27,7 @@ library
     HIT.DB.Intentions
     HIT.DB.Schema
     HIT.DB.Users
+    HIT.Env
     HIT.Handlers
     HIT.Handlers.Goals
     HIT.Handlers.Habits
@@ -55,6 +58,7 @@ library
     , http-types                 >=0.12.4
     , insert-ordered-containers  >=0.2.7
     , lens                       >=5.3.5
+    , mtl                        >=2.3
     , postgresql-simple          >=0.7.0.1
     , resource-pool              >=0.4.0.0
     , servant                    >=0.20.3.0
@@ -79,22 +83,10 @@ executable hit-server
   main-is:          Main.hs
   other-modules:
   build-depends:
-    , base               >=4.18
-    , bcrypt             >=0.0
-    , bytestring         >=0.11
-    , containers         >=0.6
+    , base           >=4.18
     , hit
-    , http-types         >=0.12
-    , postgresql-simple  >=0.6
-    , resource-pool      >=0.4
-    , servant            >=0.19
-    , servant-auth       >=0.4
-    , servant-server     >=0.19
-    , text               >=1.2
-    , wai                >=3.2
-    , wai-cors           >=0.2
-    , wai-extra          >=3.1
-    , warp               >=3.3
+    , resource-pool  >=0.4
+    , warp           >=3.3
 
   hs-source-dirs:   app
   default-language: GHC2021
@@ -121,6 +113,7 @@ test-suite hit-test
     , postgresql-simple     >=0.7.0.1
     , QuickCheck            >=2.15.0.1
     , quickcheck-instances  >=0.3.33
+    , resource-pool         >=0.4
     , servant               >=0.20.3.0
     , servant-server        >=0.20.3.0
     , tasty                 >=1.5.3

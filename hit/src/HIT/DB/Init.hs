@@ -1,27 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module HIT.DB.Init
-  ( openDb,
-    initDb,
+  ( initDb,
   )
 where
 
-import Data.ByteString.Char8 qualified as BS
-import Data.Maybe (fromMaybe)
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Database.PostgreSQL.Simple qualified as PG
-import System.Environment (lookupEnv)
-
--- | Open a PostgreSQL database connection
--- Uses DATABASE_URL env var, defaults to local connection
-openDb :: IO PG.Connection
-openDb = do
-  mDatabaseUrl <- lookupEnv "DATABASE_URL"
-  let connStr = fromMaybe "host=localhost port=5432 dbname=hit user=postgres password=postgres" mDatabaseUrl
-  putStrLn "Connecting to PostgreSQL database..."
-  PG.connectPostgreSQL (BS.pack connStr)
 
 -- | Initialize PostgreSQL database schema
 initDb :: PG.Connection -> IO ()

@@ -16,7 +16,6 @@ import Data.UUID (UUID)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam (Identity)
-import Database.PostgreSQL.Simple (Connection)
 import HIT.Api.Intentions
   ( CreateIntentionRequest (..),
     IntentionDeadline (..),
@@ -34,6 +33,7 @@ import HIT.DB
     updateIntention,
   )
 import HIT.DB.Schema (IntentionTableSelector)
+import HIT.Env (AppM, withDb)
 import HIT.Types.Deadline (DeadlineJson)
 import HIT.Types.Intention qualified as Intention (IntentionT (..))
 import HIT.Types.Interval (Interval (Daily, Weekly), IntervalTag)
@@ -43,24 +43,24 @@ import HIT.Validation (parseGoalIds, requireNonEmpty, validateGoalOwnership)
 import Servant
 import Prelude hiding (id, read)
 
-intentionsServer :: Connection -> User -> Server IntentionsApi
-intentionsServer conn user =
-  listIntentionsHandler conn user
-    :<|> crudServerTc (IntentionsResource @'Daily conn) user
-    :<|> crudServerTc (IntentionsResource @'Weekly conn) user
+intentionsServer :: User -> ServerT IntentionsApi AppM
+intentionsServer user =
+  listIntentionsHandler user
+    :<|> crudServerTc (IntentionsResource @'Daily) user
+    :<|> crudServerTc (IntentionsResource @'Weekly) user
 
-listIntentionsHandler :: Connection -> User -> Maybe Interval -> Handler [IntentionView]
-listIntentionsHandler conn user mInterval = do
+listIntentionsHandler :: User -> Maybe Interval -> AppM [IntentionView]
+listIntentionsHandler user mInterval = do
   let uid = User.id user
   case mInterval of
-    Just Daily -> liftIO $ map (uncurry toIntentionViewDaily) <$> listIntentionsWithGoals @'Daily conn uid
-    Just Weekly -> liftIO $ map (uncurry toIntentionViewWeekly) <$> listIntentionsWithGoals @'Weekly conn uid
+    Just Daily -> withDb $ \conn -> map (uncurry toIntentionViewDaily) <$> listIntentionsWithGoals @'Daily conn uid
+    Just Weekly -> withDb $ \conn -> map (uncurry toIntentionViewWeekly) <$> listIntentionsWithGoals @'Weekly conn uid
     Nothing -> do
-      daily <- liftIO $ map (uncurry toIntentionViewDaily) <$> listIntentionsWithGoals @'Daily conn uid
-      weekly <- liftIO $ map (uncurry toIntentionViewWeekly) <$> listIntentionsWithGoals @'Weekly conn uid
+      daily <- withDb $ \conn -> map (uncurry toIntentionViewDaily) <$> listIntentionsWithGoals @'Daily conn uid
+      weekly <- withDb $ \conn -> map (uncurry toIntentionViewWeekly) <$> listIntentionsWithGoals @'Weekly conn uid
       pure (daily <> weekly)
 
-newtype IntentionsResource (p :: Interval) = IntentionsResource Connection
+data IntentionsResource (p :: Interval) = IntentionsResource
 
 instance (IntentionTableSelector p, IntervalTag p, DeadlineJson p) => CrudResource (IntentionsResource p) where
   type Label (IntentionsResource p) = "intentionId"
@@ -71,28 +71,28 @@ instance (IntentionTableSelector p, IntervalTag p, DeadlineJson p) => CrudResour
 
   parseId _ = UUID.fromText
 
-  list (IntentionsResource conn) u =
-    liftIO $ map toIntentionResponseWithGoals <$> listIntentionsWithGoals @p conn (User.id u)
+  list _ u =
+    withDb $ \conn -> map toIntentionResponseWithGoals <$> listIntentionsWithGoals @p conn (User.id u)
 
-  create (IntentionsResource conn) u (CreateIntentionRequest iname idesc irate ideadline goalIdsText) = do
+  create _ u (CreateIntentionRequest iname idesc irate ideadline goalIdsText) = do
     _ <- requireNonEmpty "name" iname
     goalIds <- parseGoalIds goalIdsText
-    validateGoalOwnership conn (User.id u) goalIds
+    validateGoalOwnership (User.id u) goalIds
     iid <- liftIO UUIDv4.nextRandom
-    intention <- liftIO $ createIntention @p conn iid (User.id u) iname idesc irate ideadline goalIds
+    intention <- withDb $ \conn -> createIntention @p conn iid (User.id u) iname idesc irate ideadline goalIds
     pure (toIntentionResponseWithGoals (intention, NE.toList goalIds))
 
-  read (IntentionsResource conn) u iid =
-    liftIO $ fmap toIntentionResponseWithGoals <$> getIntentionWithGoals @p conn (User.id u) iid
+  read _ u iid =
+    withDb $ \conn -> fmap toIntentionResponseWithGoals <$> getIntentionWithGoals @p conn (User.id u) iid
 
-  update (IntentionsResource conn) u iid (UpdateIntentionRequest iname idesc irate ideadline goalIdsText) = do
+  update _ u iid (UpdateIntentionRequest iname idesc irate ideadline goalIdsText) = do
     _ <- requireNonEmpty "name" iname
     goalIds <- parseGoalIds goalIdsText
-    validateGoalOwnership conn (User.id u) goalIds
-    liftIO $ fmap (toIntentionResponseWithGoals . (,NE.toList goalIds)) <$> updateIntention @p conn (User.id u) iid iname idesc irate ideadline goalIds
+    validateGoalOwnership (User.id u) goalIds
+    withDb $ \conn -> fmap (toIntentionResponseWithGoals . (,NE.toList goalIds)) <$> updateIntention @p conn (User.id u) iid iname idesc irate ideadline goalIds
 
-  delete (IntentionsResource conn) u iid =
-    liftIO $ deleteIntention @p Proxy conn (User.id u) iid
+  delete _ u iid =
+    withDb $ \conn -> deleteIntention @p Proxy conn (User.id u) iid
 
 toIntentionViewDaily :: Intention.IntentionT 'Daily Identity -> [UUID] -> IntentionView
 toIntentionViewDaily (Intention.Intention iid _ iname idesc _ irate ideadline createdAt modifiedAt) goalIds =

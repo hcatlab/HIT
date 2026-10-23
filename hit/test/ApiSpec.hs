@@ -1,13 +1,9 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
 
 module ApiSpec (tests) where
 
-import Control.Applicative ((<|>))
 import Control.Monad (unless, void)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (eitherDecode)
@@ -15,25 +11,19 @@ import Data.Aeson.KeyMap qualified as KM
 import Data.Aeson.Types (Value (..))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
-import Data.ByteString.Lazy qualified as LBS
+import Data.Pool (withResource)
 import Data.Text (Text, unpack)
 import Data.Text.Encoding qualified as Text
 import Data.Time (UTCTime)
 import Data.Time.Format (defaultTimeLocale, parseTimeM)
 import Data.Vector qualified as V
-import Database.PostgreSQL.Simple (Connection)
-import HIT.Api (HITApiWithSwagger, HealthResponse (..))
-import HIT.Api.Auth (LoginRequest (..), LoginResponse (..), SignupRequest (..), SignupResponse (..))
-import HIT.DB (createUser, initDb, loginUser, lookupUserByToken, openDb)
-import HIT.Handlers (goalsServer, habitsServer, intentionsServer, usersServer)
-import HIT.Types.User (ApiToken (..), User, UserT (..), toPublicUser)
+import HIT.App (mkApp)
+import HIT.Config (loadConfig)
+import HIT.DB (initDb)
+import HIT.Env (Env (..), newEnv)
 import Network.HTTP.Types (HeaderName)
-import Network.Wai (Request, requestHeaders)
-import Network.Wai.Middleware.Cors (simpleCors)
-import Network.Wai.Middleware.RequestLogger (logStdout)
+import Network.Wai (Application)
 import Network.Wai.Test (SResponse (..))
-import Servant
-import Servant.Server.Experimental.Auth (AuthHandler, AuthServerData, mkAuthHandler)
 import System.Environment (lookupEnv)
 import Test.Hspec (Spec, describe, it)
 import Test.Hspec.Wai (request, shouldRespondWith, with)
@@ -41,55 +31,11 @@ import Test.Hspec.Wai.JSON (json)
 import Test.Tasty (TestTree)
 import Test.Tasty.Hspec (testSpec)
 
-type instance AuthServerData (AuthProtect "api-token") = User
-
-mkApp :: IO Application
-mkApp = do
-  conn <- openDb
-  initDb conn
-  let ctx = authHandler conn :. EmptyContext
-      api = serveWithContext (Proxy :: Proxy HITApiWithSwagger) ctx (server conn)
-  pure (logStdout (simpleCors api))
-
-server :: Connection -> Server HITApiWithSwagger
-server conn = hitApi :<|> pure mempty
-  where
-    hitApi = health :<|> signup :<|> login :<|> me :<|> goals :<|> users :<|> habits :<|> intentions
-    health = pure (HealthResponse "ok")
-    signup (SignupRequest uid em pw) = do
-      res <- liftIO (createUser conn uid em pw)
-      case res of
-        Left msg -> throwError (err409 {errBody = LBS.fromStrict (Text.encodeUtf8 msg)})
-        Right u -> pure (SignupResponse (ApiToken (apiToken u)) (toPublicUser u))
-    login (LoginRequest uid pw) = do
-      mUser <- liftIO (loginUser conn uid pw)
-      case mUser of
-        Nothing -> throwError err401
-        Just u -> pure (LoginResponse (ApiToken (apiToken u)) (toPublicUser u))
-    me user = pure (toPublicUser user)
-    goals = goalsServer conn
-    users = usersServer conn
-    habits = habitsServer conn
-    intentions = intentionsServer conn
-
-authHandler :: Connection -> AuthHandler Request User
-authHandler conn = mkAuthHandler $ \req -> do
-  tokenText <- case extractBearerToken req of
-    Nothing -> throwError err401
-    Just t -> pure t
-  mUser <- liftIO (lookupUserByToken conn (ApiToken tokenText))
-  case mUser of
-    Nothing -> throwError err401
-    Just u -> pure u
-
-extractBearerToken :: Request -> Maybe Text
-extractBearerToken req = do
-  let auth = lookup "Authorization" (requestHeaders req)
-  case auth of
-    Nothing -> Nothing
-    Just raw -> case BS.stripPrefix "Bearer " raw <|> BS.stripPrefix "bearer " raw of
-      Nothing -> Nothing
-      Just bs -> Just (Text.decodeUtf8 bs)
+mkTestApp :: IO Application
+mkTestApp = do
+  env <- loadConfig >>= newEnv
+  withResource (pool env) initDb
+  pure (mkApp env)
 
 tests :: IO TestTree
 tests = do
@@ -99,7 +45,7 @@ tests = do
     _ -> testSpec "API Integration (skipped)" (pure ())
 
 spec :: Spec
-spec = with mkApp $ do
+spec = with mkTestApp $ do
   describe "Health" $ do
     it "GET /health returns ok" $ do
       request "GET" "/health" [] "" `shouldRespondWith` [json| {"status":"ok"} |]

@@ -16,7 +16,6 @@ import Data.UUID (UUID)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
 import Database.Beam (Identity)
-import Database.PostgreSQL.Simple (Connection)
 import HIT.Api.Habits
   ( CreateHabitRequest (..),
     HabitDeadline (..),
@@ -34,6 +33,7 @@ import HIT.DB
     updateHabit,
   )
 import HIT.DB.Schema (HabitTableSelector)
+import HIT.Env (AppM, withDb)
 import HIT.Types.Deadline (DeadlineJson)
 import HIT.Types.Habit qualified as Habit (HabitT (..))
 import HIT.Types.Interval (Interval (Daily, Weekly), IntervalTag)
@@ -43,24 +43,24 @@ import HIT.Validation (parseGoalIds, requireNonEmpty, validateGoalOwnership)
 import Servant
 import Prelude hiding (id, read)
 
-habitsServer :: Connection -> User -> Server HabitsApi
-habitsServer conn user =
-  listHabitsHandler conn user
-    :<|> crudServerTc (HabitsResource @'Daily conn) user
-    :<|> crudServerTc (HabitsResource @'Weekly conn) user
+habitsServer :: User -> ServerT HabitsApi AppM
+habitsServer user =
+  listHabitsHandler user
+    :<|> crudServerTc (HabitsResource @'Daily) user
+    :<|> crudServerTc (HabitsResource @'Weekly) user
 
-listHabitsHandler :: Connection -> User -> Maybe Interval -> Handler [HabitView]
-listHabitsHandler conn user mInterval = do
+listHabitsHandler :: User -> Maybe Interval -> AppM [HabitView]
+listHabitsHandler user mInterval = do
   let uid = User.id user
   case mInterval of
-    Just Daily -> liftIO $ map (uncurry toHabitViewDaily) <$> listHabitsWithGoals @'Daily conn uid
-    Just Weekly -> liftIO $ map (uncurry toHabitViewWeekly) <$> listHabitsWithGoals @'Weekly conn uid
+    Just Daily -> withDb $ \conn -> map (uncurry toHabitViewDaily) <$> listHabitsWithGoals @'Daily conn uid
+    Just Weekly -> withDb $ \conn -> map (uncurry toHabitViewWeekly) <$> listHabitsWithGoals @'Weekly conn uid
     Nothing -> do
-      daily <- liftIO $ map (uncurry toHabitViewDaily) <$> listHabitsWithGoals @'Daily conn uid
-      weekly <- liftIO $ map (uncurry toHabitViewWeekly) <$> listHabitsWithGoals @'Weekly conn uid
+      daily <- withDb $ \conn -> map (uncurry toHabitViewDaily) <$> listHabitsWithGoals @'Daily conn uid
+      weekly <- withDb $ \conn -> map (uncurry toHabitViewWeekly) <$> listHabitsWithGoals @'Weekly conn uid
       pure (daily <> weekly)
 
-newtype HabitsResource (p :: Interval) = HabitsResource Connection
+data HabitsResource (p :: Interval) = HabitsResource
 
 instance (HabitTableSelector p, IntervalTag p, DeadlineJson p) => CrudResource (HabitsResource p) where
   type Label (HabitsResource p) = "habitId"
@@ -71,28 +71,28 @@ instance (HabitTableSelector p, IntervalTag p, DeadlineJson p) => CrudResource (
 
   parseId _ = UUID.fromText
 
-  list (HabitsResource conn) u =
-    liftIO $ map toHabitResponseWithGoals <$> listHabitsWithGoals @p conn (User.id u)
+  list _ u =
+    withDb $ \conn -> map toHabitResponseWithGoals <$> listHabitsWithGoals @p conn (User.id u)
 
-  create (HabitsResource conn) u (CreateHabitRequest hname hdesc hsort hrate hdeadline goalIdsText) = do
+  create _ u (CreateHabitRequest hname hdesc hsort hrate hdeadline goalIdsText) = do
     _ <- requireNonEmpty "name" hname
     goalIds <- parseGoalIds goalIdsText
-    validateGoalOwnership conn (User.id u) goalIds
+    validateGoalOwnership (User.id u) goalIds
     hid <- liftIO UUIDv4.nextRandom
-    habit <- liftIO $ createHabit @p conn hid (User.id u) hname hdesc hsort hrate hdeadline goalIds
+    habit <- withDb $ \conn -> createHabit @p conn hid (User.id u) hname hdesc hsort hrate hdeadline goalIds
     pure (toHabitResponseWithGoals (habit, NE.toList goalIds))
 
-  read (HabitsResource conn) u hid =
-    liftIO $ fmap toHabitResponseWithGoals <$> getHabitWithGoals @p conn (User.id u) hid
+  read _ u hid =
+    withDb $ \conn -> fmap toHabitResponseWithGoals <$> getHabitWithGoals @p conn (User.id u) hid
 
-  update (HabitsResource conn) u hid (UpdateHabitRequest hname hdesc hsort hrate hdeadline goalIdsText) = do
+  update _ u hid (UpdateHabitRequest hname hdesc hsort hrate hdeadline goalIdsText) = do
     _ <- requireNonEmpty "name" hname
     goalIds <- parseGoalIds goalIdsText
-    validateGoalOwnership conn (User.id u) goalIds
-    liftIO $ fmap (toHabitResponseWithGoals . (,NE.toList goalIds)) <$> updateHabit @p conn (User.id u) hid hname hdesc hsort hrate hdeadline goalIds
+    validateGoalOwnership (User.id u) goalIds
+    withDb $ \conn -> fmap (toHabitResponseWithGoals . (,NE.toList goalIds)) <$> updateHabit @p conn (User.id u) hid hname hdesc hsort hrate hdeadline goalIds
 
-  delete (HabitsResource conn) u hid =
-    liftIO $ deleteHabit @p Proxy conn (User.id u) hid
+  delete _ u hid =
+    withDb $ \conn -> deleteHabit @p Proxy conn (User.id u) hid
 
 toHabitViewDaily :: Habit.HabitT 'Daily Identity -> [UUID] -> HabitView
 toHabitViewDaily (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline createdAt modifiedAt) goalIds =
