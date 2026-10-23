@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module HIT.Handlers.Goals
@@ -19,6 +20,7 @@ import HIT.DB (createGoal, deleteGoal, getGoal, listGoals, updateGoal)
 import HIT.Types.Goal qualified as Goal (GoalT (..))
 import HIT.Types.User (User)
 import HIT.Types.User qualified as User (UserT (..))
+import HIT.Validation (requireNonEmpty)
 import Servant
 import Prelude hiding (id, read)
 
@@ -37,13 +39,17 @@ instance CrudResource GoalsResource where
     liftIO $ map toGoalResponse <$> listGoals conn (User.id u)
 
   create (GoalsResource conn) u (CreateGoalRequest gname gdesc gcolor gstartDate gendDate) = do
+    _ <- requireNonEmpty "name" gname
+    _ <- requireNonEmpty "description" gdesc
     gid <- liftIO UUIDv4.nextRandom
     liftIO $ toGoalResponse <$> createGoal conn gid (User.id u) gname gdesc gcolor gstartDate gendDate
 
   read (GoalsResource conn) u gid =
     liftIO $ fmap toGoalResponse <$> getGoal conn (User.id u) gid
 
-  update (GoalsResource conn) u gid (UpdateGoalRequest gname gdesc gcolor gstartDate gendDate) =
+  update (GoalsResource conn) u gid (UpdateGoalRequest gname gdesc gcolor gstartDate gendDate) = do
+    _ <- requireNonEmpty "name" gname
+    _ <- requireNonEmpty "description" gdesc
     liftIO $ fmap toGoalResponse <$> updateGoal conn (User.id u) gid gname gdesc gcolor gstartDate gendDate
 
   delete (GoalsResource conn) u gid =

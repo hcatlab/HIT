@@ -10,6 +10,7 @@ import Database.Beam.Backend.SQL (HasSqlValueSyntax (..))
 import Database.Beam.Postgres (Postgres)
 import Database.Beam.Postgres.Syntax (PgValueSyntax)
 import GHC.Generics (Generic)
+import Text.Read (readMaybe)
 
 data Fraction = Fraction
   { numerator :: Int,
@@ -22,13 +23,13 @@ instance ToJSON Fraction where
 
 instance FromJSON Fraction where
   parseJSON (String s) = do
-    let str = T.unpack s
-    let (numStr, denomStr) = break (== '/') str
-    let n = read numStr :: Int
-    case denomStr of
-      '/' : rest -> do
-        let d = read rest :: Int
-        return $ Fraction n d
+    let (numStr, rest) = break (== '/') (T.unpack s)
+    case rest of
+      '/' : denomStr -> case (readMaybe numStr, readMaybe denomStr) of
+        (Just n, Just d)
+          | n >= 0 && d > 0 -> pure (Fraction n d)
+          | otherwise -> fail "Fraction must have n >= 0 and d > 0"
+        _ -> fail "Invalid Fraction format"
       _ -> fail "Invalid Fraction format"
   parseJSON _ = fail "Fraction must be a string"
 

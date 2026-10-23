@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -38,7 +39,7 @@ import HIT.Types.Habit qualified as Habit (HabitT (..))
 import HIT.Types.Interval (Interval (Daily, Weekly), IntervalTag)
 import HIT.Types.User (User)
 import HIT.Types.User qualified as User (UserT (..))
-import HIT.Validation (parseGoalIds, validateGoalOwnership)
+import HIT.Validation (parseGoalIds, requireNonEmpty, validateGoalOwnership)
 import Servant
 import Prelude hiding (id, read)
 
@@ -74,6 +75,7 @@ instance (HabitTableSelector p, IntervalTag p, DeadlineJson p) => CrudResource (
     liftIO $ map toHabitResponseWithGoals <$> listHabitsWithGoals @p conn (User.id u)
 
   create (HabitsResource conn) u (CreateHabitRequest hname hdesc hsort hrate hdeadline goalIdsText) = do
+    _ <- requireNonEmpty "name" hname
     goalIds <- parseGoalIds goalIdsText
     validateGoalOwnership conn (User.id u) goalIds
     hid <- liftIO UUIDv4.nextRandom
@@ -84,6 +86,7 @@ instance (HabitTableSelector p, IntervalTag p, DeadlineJson p) => CrudResource (
     liftIO $ fmap toHabitResponseWithGoals <$> getHabitWithGoals @p conn (User.id u) hid
 
   update (HabitsResource conn) u hid (UpdateHabitRequest hname hdesc hsort hrate hdeadline goalIdsText) = do
+    _ <- requireNonEmpty "name" hname
     goalIds <- parseGoalIds goalIdsText
     validateGoalOwnership conn (User.id u) goalIds
     liftIO $ fmap (toHabitResponseWithGoals . (,NE.toList goalIds)) <$> updateHabit @p conn (User.id u) hid hname hdesc hsort hrate hdeadline goalIds

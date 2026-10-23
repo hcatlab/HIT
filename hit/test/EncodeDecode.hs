@@ -35,6 +35,8 @@ import HIT.Types
 import Test.QuickCheck
   ( Arbitrary (..),
     Gen,
+    NonNegative (..),
+    Positive (..),
     chooseInt,
     counterexample,
     elements,
@@ -63,14 +65,14 @@ decodeEncode (LBS lbs) =
 
 instance Arbitrary Fraction where
   arbitrary = do
-    x <- arbitrary
-    y <- arbitrary `suchThat` (/= 0)
+    NonNegative x <- arbitrary
+    Positive y <- arbitrary
     return $ Fraction x y
 
 instance Arbitrary (LBS Fraction) where
   arbitrary = do
-    x <- arbitrary :: Gen Int
-    y <- arbitrary `suchThat` (/= 0) :: Gen Int
+    NonNegative x <- arbitrary :: Gen (NonNegative Int)
+    Positive y <- arbitrary :: Gen (Positive Int)
     return . LBS . LBU.fromString $ ['"'] ++ show x ++ "/" ++ show y ++ ['"']
 
 nonEmptyTextGen :: Gen (NonEmpty Text)

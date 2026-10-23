@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -38,7 +39,7 @@ import HIT.Types.Intention qualified as Intention (IntentionT (..))
 import HIT.Types.Interval (Interval (Daily, Weekly), IntervalTag)
 import HIT.Types.User (User)
 import HIT.Types.User qualified as User (UserT (..))
-import HIT.Validation (parseGoalIds, validateGoalOwnership)
+import HIT.Validation (parseGoalIds, requireNonEmpty, validateGoalOwnership)
 import Servant
 import Prelude hiding (id, read)
 
@@ -74,6 +75,7 @@ instance (IntentionTableSelector p, IntervalTag p, DeadlineJson p) => CrudResour
     liftIO $ map toIntentionResponseWithGoals <$> listIntentionsWithGoals @p conn (User.id u)
 
   create (IntentionsResource conn) u (CreateIntentionRequest iname idesc irate ideadline goalIdsText) = do
+    _ <- requireNonEmpty "name" iname
     goalIds <- parseGoalIds goalIdsText
     validateGoalOwnership conn (User.id u) goalIds
     iid <- liftIO UUIDv4.nextRandom
@@ -84,6 +86,7 @@ instance (IntentionTableSelector p, IntervalTag p, DeadlineJson p) => CrudResour
     liftIO $ fmap toIntentionResponseWithGoals <$> getIntentionWithGoals @p conn (User.id u) iid
 
   update (IntentionsResource conn) u iid (UpdateIntentionRequest iname idesc irate ideadline goalIdsText) = do
+    _ <- requireNonEmpty "name" iname
     goalIds <- parseGoalIds goalIdsText
     validateGoalOwnership conn (User.id u) goalIds
     liftIO $ fmap (toIntentionResponseWithGoals . (,NE.toList goalIds)) <$> updateIntention @p conn (User.id u) iid iname idesc irate ideadline goalIds
