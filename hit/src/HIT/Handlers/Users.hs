@@ -11,10 +11,10 @@ where
 import Control.Monad.IO.Class (liftIO)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple (Connection)
-import HIT.Api.Users (CreateUserRequest (..), UpdateUserRequest (..), UserResponse (..))
+import HIT.Api.Users (CreateUserRequest, UpdateUserRequest (..), UserResponse (..))
 import HIT.Api.Users qualified as ApiUsers (UserResponse (..))
 import HIT.Crud (CrudApiFor, CrudResource (..), crudServerTc)
-import HIT.DB.Users (createUser, deleteUserById, getUserById, listAllUsers, updateUserEmail)
+import HIT.DB.Users (deleteUserById, getUserById, updateUserEmail)
 import HIT.Types.User (User)
 import HIT.Types.User qualified as UserType (UserT (..))
 import Servant
@@ -31,17 +31,16 @@ instance CrudResource UsersResource where
 
   parseId _ = Just
 
-  list (UsersResource conn) _ =
-    liftIO $ map toUserResponse <$> listAllUsers conn
+  list _ user =
+    pure [toUserResponse user]
 
-  create (UsersResource conn) _ (CreateUserRequest uid em pw) = do
-    res <- liftIO $ createUser conn uid em pw
-    case res of
-      Left _ -> throwError err500 {errBody = "Failed to create user"}
-      Right u -> pure (toUserResponse u)
+  create _ _ _ =
+    throwError err403 {errBody = "Use /signup to create users"}
 
-  read (UsersResource conn) _ uid =
-    liftIO $ fmap toUserResponse <$> getUserById conn uid
+  read (UsersResource conn) user uid =
+    if UserType.id user == uid
+      then liftIO $ fmap toUserResponse <$> getUserById conn uid
+      else pure Nothing
 
   update (UsersResource conn) user uid (UpdateUserRequest newEmail) =
     if UserType.id user == uid

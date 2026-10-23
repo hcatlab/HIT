@@ -79,7 +79,7 @@ authHandler conn = mkAuthHandler $ \req -> do
     Just t -> pure t
   mUser <- liftIO (lookupUserByToken conn (ApiToken tokenText))
   case mUser of
-    Nothing -> throwError err403
+    Nothing -> throwError err401
     Just u -> pure u
 
 extractBearerToken :: Request -> Maybe Text
