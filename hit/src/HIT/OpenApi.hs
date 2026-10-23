@@ -31,8 +31,7 @@ hitSwagger =
     & info . title .~ "HIT API"
     & info . version .~ "0.1.0"
     & info . S.description ?~ "API for Habits, Intentions, and Time tracking. Protected endpoints require Bearer token authentication."
-    & host ?~ "localhost:8080"
-    & schemes ?~ [Http]
+    & basePath ?~ "/api"
   where
     -- Simplified API type for Swagger generation (without AuthProtect)
     unprotectedApi :: Proxy UnprotectedHITApi
