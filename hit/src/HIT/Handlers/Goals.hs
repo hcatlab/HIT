@@ -7,6 +7,7 @@ module HIT.Handlers.Goals
   )
 where
 
+import Control.Monad.IO.Class (liftIO)
 import Data.UUID (UUID)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
@@ -33,20 +34,20 @@ instance CrudResource GoalsResource where
   parseId _ = UUID.fromText
 
   list (GoalsResource conn) u =
-    map toGoalResponse <$> listGoals conn (User.id u)
+    liftIO $ map toGoalResponse <$> listGoals conn (User.id u)
 
   create (GoalsResource conn) u (CreateGoalRequest gname gdesc gcolor gstartDate gendDate) = do
-    gid <- UUIDv4.nextRandom
-    toGoalResponse <$> createGoal conn gid (User.id u) gname gdesc gcolor gstartDate gendDate
+    gid <- liftIO UUIDv4.nextRandom
+    liftIO $ toGoalResponse <$> createGoal conn gid (User.id u) gname gdesc gcolor gstartDate gendDate
 
   read (GoalsResource conn) u gid =
-    fmap toGoalResponse <$> getGoal conn (User.id u) gid
+    liftIO $ fmap toGoalResponse <$> getGoal conn (User.id u) gid
 
   update (GoalsResource conn) u gid (UpdateGoalRequest gname gdesc gcolor gstartDate gendDate) =
-    fmap toGoalResponse <$> updateGoal conn (User.id u) gid gname gdesc gcolor gstartDate gendDate
+    liftIO $ fmap toGoalResponse <$> updateGoal conn (User.id u) gid gname gdesc gcolor gstartDate gendDate
 
-  delete (GoalsResource conn) u =
-    deleteGoal conn (User.id u)
+  delete (GoalsResource conn) u gid =
+    liftIO $ deleteGoal conn (User.id u) gid
 
 goalsServer :: Connection -> User -> Server GoalsApi
 goalsServer conn = crudServerTc (GoalsResource conn)

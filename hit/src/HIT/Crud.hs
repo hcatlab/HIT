@@ -11,7 +11,6 @@ module HIT.Crud
   )
 where
 
-import Control.Monad.IO.Class (liftIO)
 import Data.Text (Text)
 import GHC.TypeLits (Symbol)
 import HIT.Types.User (User)
@@ -36,11 +35,11 @@ class CrudResource r where
   type Resp r
 
   parseId :: r -> Text -> Maybe (InternalId r)
-  list :: r -> User -> IO [Resp r]
-  create :: r -> User -> CreateReq r -> IO (Resp r)
-  read :: r -> User -> InternalId r -> IO (Maybe (Resp r))
-  update :: r -> User -> InternalId r -> UpdateReq r -> IO (Maybe (Resp r))
-  delete :: r -> User -> InternalId r -> IO Bool
+  list :: r -> User -> Handler [Resp r]
+  create :: r -> User -> CreateReq r -> Handler (Resp r)
+  read :: r -> User -> InternalId r -> Handler (Maybe (Resp r))
+  update :: r -> User -> InternalId r -> UpdateReq r -> Handler (Maybe (Resp r))
+  delete :: r -> User -> InternalId r -> Handler Bool
 
 -- Convenience alias to get the API type from a CrudResource
 type CrudApiFor r = CrudApi (Label r) Text (Resp r) (CreateReq r) (UpdateReq r)
@@ -49,27 +48,27 @@ type CrudApiFor r = CrudApi (Label r) Text (Resp r) (CreateReq r) (UpdateReq r)
 crudServerTc :: forall r. (CrudResource r) => r -> User -> Server (CrudApiFor r)
 crudServerTc res user = listH :<|> createH :<|> getH :<|> updateH :<|> deleteH
   where
-    listH = liftIO $ list res user
+    listH = list res user
 
-    createH req = liftIO $ create res user req
+    createH = create res user
 
     getH ridTxt =
       case parseId res ridTxt of
         Nothing -> throwError err400
         Just rid -> do
-          m <- liftIO $ read res user rid
+          m <- read res user rid
           maybe (throwError err404) pure m
 
     updateH ridTxt req =
       case parseId res ridTxt of
         Nothing -> throwError err400
         Just rid -> do
-          m <- liftIO $ update res user rid req
+          m <- update res user rid req
           maybe (throwError err404) pure m
 
     deleteH ridTxt =
       case parseId res ridTxt of
         Nothing -> throwError err400
         Just rid -> do
-          ok <- liftIO $ delete res user rid
+          ok <- delete res user rid
           if ok then pure NoContent else throwError err404

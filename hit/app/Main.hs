@@ -8,7 +8,6 @@ module Main where
 import Control.Applicative ((<|>))
 import Control.Monad.IO.Class (liftIO)
 import Data.ByteString qualified as BS
-import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy qualified as LBS
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text

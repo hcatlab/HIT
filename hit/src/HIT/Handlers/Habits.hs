@@ -9,13 +9,8 @@ module HIT.Handlers.Habits
   )
 where
 
-import Control.Exception (throwIO)
-import Control.Monad (unless)
 import Control.Monad.IO.Class (liftIO)
-import Data.ByteString.Lazy.Char8 qualified as LBS
-import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Text (Text)
 import Data.UUID (UUID)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
@@ -33,7 +28,6 @@ import HIT.Crud (CrudResource (..), crudServerTc)
 import HIT.DB
   ( createHabit,
     deleteHabit,
-    ensureGoalsBelongToUser,
     getHabitWithGoals,
     listHabitsWithGoals,
     updateHabit,
@@ -44,6 +38,7 @@ import HIT.Types.Habit qualified as Habit (HabitT (..))
 import HIT.Types.Interval (Interval (Daily, Weekly), IntervalTag)
 import HIT.Types.User (User)
 import HIT.Types.User qualified as User (UserT (..))
+import HIT.Validation (parseGoalIds, validateGoalOwnership)
 import Servant
 import Prelude hiding (id, read)
 
@@ -75,26 +70,26 @@ instance (HabitTableSelector p, IntervalTag p, DeadlineJson p) => CrudResource (
 
   parseId _ = UUID.fromText
 
-  list (HabitsResource conn) u = do
-    map toHabitResponseWithGoals <$> listHabitsWithGoals @p conn (User.id u)
+  list (HabitsResource conn) u =
+    liftIO $ map toHabitResponseWithGoals <$> listHabitsWithGoals @p conn (User.id u)
 
   create (HabitsResource conn) u (CreateHabitRequest hname hdesc hsort hrate hdeadline goalIdsText) = do
     goalIds <- parseGoalIds goalIdsText
-    ensureValidGoals conn (User.id u) goalIds
+    validateGoalOwnership conn (User.id u) goalIds
     hid <- liftIO UUIDv4.nextRandom
     habit <- liftIO $ createHabit @p conn hid (User.id u) hname hdesc hsort hrate hdeadline goalIds
     pure (toHabitResponseWithGoals (habit, NE.toList goalIds))
 
   read (HabitsResource conn) u hid =
-    fmap toHabitResponseWithGoals <$> getHabitWithGoals @p conn (User.id u) hid
+    liftIO $ fmap toHabitResponseWithGoals <$> getHabitWithGoals @p conn (User.id u) hid
 
   update (HabitsResource conn) u hid (UpdateHabitRequest hname hdesc hsort hrate hdeadline goalIdsText) = do
     goalIds <- parseGoalIds goalIdsText
-    ensureValidGoals conn (User.id u) goalIds
-    fmap (toHabitResponseWithGoals . (,NE.toList goalIds)) <$> updateHabit @p conn (User.id u) hid hname hdesc hsort hrate hdeadline goalIds
+    validateGoalOwnership conn (User.id u) goalIds
+    liftIO $ fmap (toHabitResponseWithGoals . (,NE.toList goalIds)) <$> updateHabit @p conn (User.id u) hid hname hdesc hsort hrate hdeadline goalIds
 
-  delete (HabitsResource conn) u =
-    deleteHabit @p Proxy conn (User.id u)
+  delete (HabitsResource conn) u hid =
+    liftIO $ deleteHabit @p Proxy conn (User.id u) hid
 
 toHabitViewDaily :: Habit.HabitT 'Daily Identity -> [UUID] -> HabitView
 toHabitViewDaily (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline createdAt modifiedAt) goalIds =
@@ -107,13 +102,3 @@ toHabitViewWeekly (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline created
 toHabitResponseWithGoals :: (Habit.HabitT p Identity, [UUID]) -> HabitResponse p
 toHabitResponseWithGoals (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline createdAt modifiedAt, goalIds) =
   HabitResponse (UUID.toText hid) hname hdesc hsort hrate hdeadline (map UUID.toText goalIds) createdAt modifiedAt
-
-parseGoalIds :: NonEmpty Text -> IO (NonEmpty UUID)
-parseGoalIds ids = case traverse UUID.fromText ids of
-  Nothing -> throwIO err400 {errBody = LBS.pack "Invalid goal id"}
-  Just parsed -> pure parsed
-
-ensureValidGoals :: Connection -> Text -> NonEmpty UUID -> IO ()
-ensureValidGoals conn uid goalIds = do
-  ok <- ensureGoalsBelongToUser conn uid goalIds
-  unless ok $ throwIO err400 {errBody = LBS.pack "goalIds must be non-empty and belong to the current user"}

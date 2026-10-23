@@ -41,6 +41,7 @@ library
     HIT.Types.Sort
     HIT.Types.State
     HIT.Types.User
+    HIT.Validation
 
   build-depends:
     , aeson                      >=2.2.3.0

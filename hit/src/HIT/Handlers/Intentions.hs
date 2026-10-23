@@ -9,13 +9,8 @@ module HIT.Handlers.Intentions
   )
 where
 
-import Control.Exception (throwIO)
-import Control.Monad (unless)
 import Control.Monad.IO.Class (liftIO)
-import Data.ByteString.Lazy.Char8 qualified as LBS
-import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Text (Text)
 import Data.UUID (UUID)
 import Data.UUID qualified as UUID
 import Data.UUID.V4 qualified as UUIDv4
@@ -33,7 +28,6 @@ import HIT.Crud (CrudResource (..), crudServerTc)
 import HIT.DB
   ( createIntention,
     deleteIntention,
-    ensureGoalsBelongToUser,
     getIntentionWithGoals,
     listIntentionsWithGoals,
     updateIntention,
@@ -44,6 +38,7 @@ import HIT.Types.Intention qualified as Intention (IntentionT (..))
 import HIT.Types.Interval (Interval (Daily, Weekly), IntervalTag)
 import HIT.Types.User (User)
 import HIT.Types.User qualified as User (UserT (..))
+import HIT.Validation (parseGoalIds, validateGoalOwnership)
 import Servant
 import Prelude hiding (id, read)
 
@@ -76,25 +71,25 @@ instance (IntentionTableSelector p, IntervalTag p, DeadlineJson p) => CrudResour
   parseId _ = UUID.fromText
 
   list (IntentionsResource conn) u =
-    map toIntentionResponseWithGoals <$> listIntentionsWithGoals @p conn (User.id u)
+    liftIO $ map toIntentionResponseWithGoals <$> listIntentionsWithGoals @p conn (User.id u)
 
   create (IntentionsResource conn) u (CreateIntentionRequest iname idesc irate ideadline goalIdsText) = do
     goalIds <- parseGoalIds goalIdsText
-    ensureValidGoals conn (User.id u) goalIds
+    validateGoalOwnership conn (User.id u) goalIds
     iid <- liftIO UUIDv4.nextRandom
     intention <- liftIO $ createIntention @p conn iid (User.id u) iname idesc irate ideadline goalIds
     pure (toIntentionResponseWithGoals (intention, NE.toList goalIds))
 
   read (IntentionsResource conn) u iid =
-    fmap toIntentionResponseWithGoals <$> getIntentionWithGoals @p conn (User.id u) iid
+    liftIO $ fmap toIntentionResponseWithGoals <$> getIntentionWithGoals @p conn (User.id u) iid
 
   update (IntentionsResource conn) u iid (UpdateIntentionRequest iname idesc irate ideadline goalIdsText) = do
     goalIds <- parseGoalIds goalIdsText
-    ensureValidGoals conn (User.id u) goalIds
-    fmap (toIntentionResponseWithGoals . (,NE.toList goalIds)) <$> updateIntention @p conn (User.id u) iid iname idesc irate ideadline goalIds
+    validateGoalOwnership conn (User.id u) goalIds
+    liftIO $ fmap (toIntentionResponseWithGoals . (,NE.toList goalIds)) <$> updateIntention @p conn (User.id u) iid iname idesc irate ideadline goalIds
 
-  delete (IntentionsResource conn) u =
-    deleteIntention @p Proxy conn (User.id u)
+  delete (IntentionsResource conn) u iid =
+    liftIO $ deleteIntention @p Proxy conn (User.id u) iid
 
 toIntentionViewDaily :: Intention.IntentionT 'Daily Identity -> [UUID] -> IntentionView
 toIntentionViewDaily (Intention.Intention iid _ iname idesc _ irate ideadline createdAt modifiedAt) goalIds =
@@ -107,13 +102,3 @@ toIntentionViewWeekly (Intention.Intention iid _ iname idesc _ irate ideadline c
 toIntentionResponseWithGoals :: (Intention.IntentionT p Identity, [UUID]) -> IntentionResponse p
 toIntentionResponseWithGoals (Intention.Intention iid _ iname idesc _ irate ideadline createdAt modifiedAt, goalIds) =
   IntentionResponse (UUID.toText iid) iname idesc irate ideadline (map UUID.toText goalIds) createdAt modifiedAt
-
-parseGoalIds :: NonEmpty Text -> IO (NonEmpty UUID)
-parseGoalIds ids = case traverse UUID.fromText ids of
-  Nothing -> throwIO err400 {errBody = LBS.pack "Invalid goal id"}
-  Just parsed -> pure parsed
-
-ensureValidGoals :: Connection -> Text -> NonEmpty UUID -> IO ()
-ensureValidGoals conn uid goalIds = do
-  ok <- ensureGoalsBelongToUser conn uid goalIds
-  unless ok $ throwIO err400 {errBody = LBS.pack "goalIds must be non-empty and belong to the current user"}

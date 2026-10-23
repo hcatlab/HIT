@@ -8,6 +8,7 @@ module HIT.Handlers.Users
   )
 where
 
+import Control.Monad.IO.Class (liftIO)
 import Data.Text (Text)
 import Database.PostgreSQL.Simple (Connection)
 import HIT.Api.Users (CreateUserRequest (..), UpdateUserRequest (..), UserResponse (..))
@@ -31,25 +32,25 @@ instance CrudResource UsersResource where
   parseId _ = Just
 
   list (UsersResource conn) _ =
-    map toUserResponse <$> listAllUsers conn
+    liftIO $ map toUserResponse <$> listAllUsers conn
 
   create (UsersResource conn) _ (CreateUserRequest uid em pw) = do
-    res <- createUser conn uid em pw
+    res <- liftIO $ createUser conn uid em pw
     case res of
-      Left _ -> fail "failed to create user"
+      Left _ -> throwError err500 {errBody = "Failed to create user"}
       Right u -> pure (toUserResponse u)
 
   read (UsersResource conn) _ uid =
-    fmap toUserResponse <$> getUserById conn uid
+    liftIO $ fmap toUserResponse <$> getUserById conn uid
 
   update (UsersResource conn) user uid (UpdateUserRequest newEmail) =
     if UserType.id user == uid
-      then fmap toUserResponse <$> updateUserEmail conn uid newEmail
+      then liftIO $ fmap toUserResponse <$> updateUserEmail conn uid newEmail
       else pure Nothing
 
   delete (UsersResource conn) user uid =
     if UserType.id user == uid
-      then deleteUserById conn uid
+      then liftIO $ deleteUserById conn uid
       else pure False
 
 usersServer :: Connection -> User -> Server UsersApi
