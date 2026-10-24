@@ -5,10 +5,12 @@ on:
     paths:
       - "hit-cli/**"
       - ".github/workflows/ci-hit-cli.yml"
+      - ".github/actions/ormolu/**"
   pull_request:
     paths:
       - "hit-cli/**"
       - ".github/workflows/ci-hit-cli.yml"
+      - ".github/actions/ormolu/**"
 
 jobs:
   build:
@@ -85,7 +87,7 @@ jobs:
         uses: haskell-actions/hlint-run@v2
 
       - name: Check formatting with Ormolu
-        uses: haskell-actions/run-ormolu@v21
+        uses: ./.github/actions/ormolu
         with:
           pattern: |
-            src/**/*.hs
+            hit-cli/src/*.hs
