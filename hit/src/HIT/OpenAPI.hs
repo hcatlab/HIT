@@ -14,12 +14,12 @@ where
 
 import Control.Lens ((&), (.~), (<>~), (?~))
 import Data.Aeson (camelTo2, toJSON)
-import Data.HashMap.Strict.InsOrd qualified as IOHM
 import Data.Kind (Type)
 import Data.OpenApi
 import Data.Proxy (Proxy (..))
 import Data.Time (DayOfWeek (..))
 import Data.Typeable (Typeable)
+import GHC.Exts (fromList)
 import HIT.API qualified as API
 import HIT.Types qualified as Types
 import Refined.Unsafe.Type (Refined (..))
@@ -38,8 +38,8 @@ hitOpenAPI =
 instance (HasOpenApi api) => HasOpenApi (AuthProtect "api-token" :> api) where
   toOpenApi _ =
     toOpenApi (Proxy :: Proxy api)
-      & components . securitySchemes <>~ SecurityDefinitions (IOHM.singleton "bearer" (SecurityScheme (SecuritySchemeHttp (HttpSchemeBearer Nothing)) Nothing))
-      & allOperations . security .~ [SecurityRequirement (IOHM.singleton "bearer" [])]
+      & components . securitySchemes <>~ SecurityDefinitions (fromList [("bearer", SecurityScheme (SecuritySchemeHttp (HttpSchemeBearer Nothing)) Nothing)])
+      & allOperations . security .~ [SecurityRequirement (fromList [("bearer", [])])]
 
 deriving newtype instance (Typeable entity) => ToSchema (Types.Identifier entity)
 

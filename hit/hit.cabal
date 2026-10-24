@@ -63,7 +63,6 @@ library
     , deriving-aeson             >=0.2.10
     , file-embed                 >=0.0.15
     , http-types                 >=0.12.4
-    , insert-ordered-containers  >=0.2.7
     , lens                       >=5.3.5
     , mtl                        >=2.3
     , openapi3                   >=3.2
