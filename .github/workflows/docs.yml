@@ -1,0 +1,111 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "hit/**"
+      - "hit-cli/**"
+      - "cabal.project"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build haddock docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Haskell
+        id: setup
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.12"
+          cabal-version: "3.16"
+          cabal-update: true
+
+      - name: Install PostgreSQL client libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev
+
+      - name: Configure the build
+        run: |
+          cabal configure --disable-tests --disable-benchmarks --disable-documentation
+          cabal build all --dry-run
+
+      - name: Restore cached dependencies
+        uses: actions/cache/restore@v6
+        id: cache
+        env:
+          key: docs-${{ runner.os }}-ghc-${{ steps.setup.outputs.ghc-version }}-cabal-${{ steps.setup.outputs.cabal-version }}
+        with:
+          path: ${{ steps.setup.outputs.cabal-store }}
+          key: ${{ env.key }}-plan-${{ hashFiles('**/plan.json') }}
+          restore-keys: ${{ env.key }}-
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: cabal build all --only-dependencies
+
+      - name: Save cached dependencies
+        uses: actions/cache/save@v6
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ steps.setup.outputs.cabal-store }}
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Haddock
+        run: |
+          cabal haddock hit:lib:hit --haddock-hyperlink-source --haddock-quickjump
+          cabal haddock hit-cli:exe:hit --haddock-executables --haddock-hyperlink-source --haddock-quickjump
+
+      - name: Assemble site
+        run: |
+          hit=$(find dist-newstyle/build -type d -path '*/hit-0.1.0.0/doc/html/hit' | head -1)
+          cli=$(dirname "$(find dist-newstyle/build -type f -name index.html -path '*/hit-cli-0.1.0.0/*/doc/html/*' | head -1)")
+          test -n "$hit" && test -f "$cli/index.html"
+          mkdir -p site
+          cp -R "$hit" site/hit
+          cp -R "$cli" site/hit-cli
+          cat > site/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head><meta charset="utf-8"><title>HIT docs</title></head>
+          <body>
+          <h1>HIT docs</h1>
+          <ul>
+          <li><a href="hit/">hit</a>: api backend</li>
+          <li><a href="hit-cli/">hit-cli</a>: command line client</li>
+          </ul>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
