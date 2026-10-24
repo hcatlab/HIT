@@ -22,6 +22,20 @@ jobs:
         ghc: ["9.12", "9.10"]
         cabal: ["3.16", "3.14"]
         os: ["ubuntu-latest"]
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: hit
+          POSTGRES_PASSWORD: hit
+          POSTGRES_DB: hit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hit"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: hit
@@ -41,13 +55,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libpq-dev
-
-      - name: Set up PostgreSQL
-        run: |
-          sudo systemctl start postgresql.service
-          sudo -u postgres psql -c "CREATE USER hit WITH PASSWORD 'hit' CREATEDB;"
-          sudo -u postgres psql -c "CREATE DATABASE hit OWNER hit;"
-          sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE hit TO hit;"
 
       - name: Configure the build
         run: |
