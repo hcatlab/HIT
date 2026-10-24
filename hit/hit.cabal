@@ -11,21 +11,25 @@ extra-source-files: migrations/*.sql
 
 library
   exposed-modules:
-    HIT.Api
-    HIT.Api.Auth
-    HIT.Api.Goals
-    HIT.Api.Habits
-    HIT.Api.Health
-    HIT.Api.Intentions
-    HIT.Api.Users
+    HIT.API
+    HIT.API.Auth
+    HIT.API.Goals
+    HIT.API.Habits
+    HIT.API.Health
+    HIT.API.Intentions
+    HIT.API.Users
     HIT.App
     HIT.Config
-    HIT.Crud
+    HIT.CRUD
     HIT.DB
+    HIT.DB.Codec
+    HIT.DB.DateRange
     HIT.DB.Goals
     HIT.DB.Habits
     HIT.DB.Intentions
     HIT.DB.Migrate
+    HIT.DB.PgEnum
+    HIT.DB.Rows
     HIT.DB.Schema
     HIT.DB.Users
     HIT.Env
@@ -34,17 +38,17 @@ library
     HIT.Handlers.Habits
     HIT.Handlers.Intentions
     HIT.Handlers.Users
-    HIT.OpenApi
+    HIT.OpenAPI
     HIT.Types
-    HIT.Types.Deadline
-    HIT.Types.Fraction
     HIT.Types.Goal
     HIT.Types.Habit
+    HIT.Types.Identifier
     HIT.Types.Intention
     HIT.Types.Interval
-    HIT.Types.Sort
-    HIT.Types.State
+    HIT.Types.Refined
+    HIT.Types.Schedule
     HIT.Types.User
+    HIT.Types.Weekdays
     HIT.Validation
 
   build-depends:
@@ -62,14 +66,15 @@ library
     , insert-ordered-containers  >=0.2.7
     , lens                       >=5.3.5
     , mtl                        >=2.3
+    , openapi3                   >=3.2
     , postgresql-migration       >=0.2.1.8
     , postgresql-simple          >=0.7.0.1
+    , refined                    >=0.8.2
     , resource-pool              >=0.4.0.0
     , servant                    >=0.20.3.0
     , servant-auth               >=0.4.2.0
+    , servant-openapi3           >=2.0.1
     , servant-server             >=0.20.3.0
-    , servant-swagger            >=1.2.1
-    , swagger2                   >=2.8.10
     , text                       >=1.2
     , time                       >=1.9
     , transformers               >=0.5
@@ -100,7 +105,9 @@ test-suite hit-test
   type:             exitcode-stdio-1.0
   main-is:          Main.hs
   other-modules:
-    ApiSpec
+    APISpec
+    Arbitraries
+    CodecSpec
     EncodeDecode
 
   hs-source-dirs:   test
@@ -109,6 +116,7 @@ test-suite hit-test
     , base                  >=4.18
     , bytestring            >=0.11
     , containers            >=0.7
+    , generic-arbitrary     >=1.0
     , hit
     , hspec                 >=2.11.16
     , hspec-wai             >=0.11.1

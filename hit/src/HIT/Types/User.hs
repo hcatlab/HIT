@@ -3,65 +3,48 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module HIT.Types.User
-  ( UserT (..),
-    User,
-    PublicUser (..),
-    toPublicUser,
-    ApiToken (..),
-    PrimaryKey (UserId),
+  ( User (..),
+    APIToken (..),
   )
 where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import Data.Time (UTCTime)
-import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
+import Database.Beam (FromBackendRow, HasSqlEqualityCheck)
+import Database.Beam.Backend.SQL (HasSqlValueSyntax)
+import Database.Beam.Postgres (Postgres)
+import Database.Beam.Postgres.Syntax (PgValueSyntax)
 import Deriving.Aeson (CustomJSON (..), UnwrapUnaryRecords)
 import GHC.Generics (Generic)
+import HIT.Types.Identifier (Username)
 import Prelude hiding (id)
 
-newtype ApiToken = ApiToken {unApiToken :: Text}
+-- | an api token is the bearer token of a user, json as a string
+newtype APIToken = APIToken {unAPIToken :: Text}
   deriving stock (Show, Eq, Ord, Generic)
-  deriving (ToJSON, FromJSON) via (CustomJSON '[UnwrapUnaryRecords] ApiToken)
+  deriving (ToJSON, FromJSON) via (CustomJSON '[UnwrapUnaryRecords] APIToken)
+  deriving newtype (HasSqlValueSyntax PgValueSyntax, FromBackendRow Postgres)
+  deriving anyclass (HasSqlEqualityCheck Postgres)
 
-data UserT f = User
-  { id :: Columnar f Text,
-    email :: Columnar f Text,
-    passwordHash :: Columnar f Text,
-    apiToken :: Columnar f Text,
-    createdAt :: Columnar f UTCTime,
-    modifiedAt :: Columnar f UTCTime
-  }
-  deriving (Generic)
-
-type User = UserT Identity
-
-deriving instance Show User
-
-deriving instance Eq User
-
-instance Beamable UserT
-
-instance Table UserT where
-  data PrimaryKey UserT f = UserId (Columnar f Text) deriving (Generic)
-  primaryKey (User i _ _ _ _ _) = UserId i
-
-deriving instance Show (PrimaryKey UserT Identity)
-
-deriving instance Eq (PrimaryKey UserT Identity)
-
-instance Beamable (PrimaryKey UserT)
-
-data PublicUser = PublicUser
-  { id :: Text,
-    email :: Text
+-- | a user account with credentials and settings
+data User = User
+  { -- | primary key
+    id :: Username,
+    -- | unique ignoring case
+    email :: Text,
+    -- | bcrypt hash of the password
+    passwordHash :: Text,
+    -- | bearer token, unique, replaced on each login
+    apiToken :: APIToken,
+    -- | iana zone name, the user's today is the current date there
+    timezone :: Text,
+    -- | creation time
+    createdAt :: UTCTime,
+    -- | last update, at least createdAt
+    modifiedAt :: UTCTime
   }
   deriving stock (Show, Eq, Generic)
-  deriving anyclass (ToJSON, FromJSON)
-
-toPublicUser :: User -> PublicUser
-toPublicUser (User u e _ _ _ _) = PublicUser u e

@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 
-module HIT.Api.Health where
+module HIT.API.Health where
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)

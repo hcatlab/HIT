@@ -1,107 +1,101 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module HIT.Handlers.Habits
   ( habitsServer,
-    HabitsApi,
   )
 where
 
+import Control.Monad (unless)
 import Control.Monad.IO.Class (liftIO)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.UUID (UUID)
-import Data.UUID qualified as UUID
-import Data.UUID.V4 qualified as UUIDv4
-import Database.Beam (Identity)
-import HIT.Api.Habits
-  ( CreateHabitRequest (..),
-    HabitDeadline (..),
-    HabitResponse (..),
-    HabitView (..),
-    HabitsApi,
-    UpdateHabitRequest (..),
-  )
-import HIT.Crud (CrudResource (..), crudServerTc)
-import HIT.DB
-  ( createHabit,
-    deleteHabit,
-    getHabitWithGoals,
-    listHabitsWithGoals,
-    updateHabit,
-  )
-import HIT.DB.Schema (HabitTableSelector)
+import Data.Maybe (fromMaybe)
+import Data.Time (Day, UTCTime, getCurrentTime)
+import Data.Traversable (for)
+import HIT.API.Habits (HabitRequest (..), HabitResponse (..), HabitsAPI)
+import HIT.CRUD (CRUDResource (..), crudServer)
+import HIT.DB (createHabit, deleteHabit, getHabit, listHabits, updateHabit)
 import HIT.Env (AppM, withDb)
-import HIT.Types.Deadline (DeadlineJson)
-import HIT.Types.Habit qualified as Habit (HabitT (..))
-import HIT.Types.Interval (Interval (Daily, Weekly), IntervalTag)
+import HIT.Handlers.Users (userToday)
+import HIT.Types.Habit (Habit (Habit), SomeHabit (..))
+import HIT.Types.Habit qualified as Habit (Habit (..))
+import HIT.Types.Identifier (Entity (..), GoalIdentifier, HabitIdentifier, Username, newIdentifier)
+import HIT.Types.Interval (Interval (..))
+import HIT.Types.Refined (defaultTarget)
+import HIT.Types.Schedule (Schedule (..), scheduleInterval)
 import HIT.Types.User (User)
-import HIT.Types.User qualified as User (UserT (..))
-import HIT.Validation (parseGoalIds, requireNonEmpty, validateGoalOwnership)
+import HIT.Types.User qualified as User (User (..))
+import HIT.Types.Weekdays (Weekdays, everyDay)
+import HIT.Validation (orBadRequest, validateGoalOwnership)
 import Servant
 import Prelude hiding (id, read)
 
-habitsServer :: User -> ServerT HabitsApi AppM
-habitsServer user =
-  listHabitsHandler user
-    :<|> crudServerTc (HabitsResource @'Daily) user
-    :<|> crudServerTc (HabitsResource @'Weekly) user
+instance CRUDResource 'HabitEntity where
+  type Label 'HabitEntity = "habitId"
+  type CreateRequest 'HabitEntity = HabitRequest
+  type UpdateRequest 'HabitEntity = HabitRequest
+  type Response 'HabitEntity = HabitResponse
 
-listHabitsHandler :: User -> Maybe Interval -> AppM [HabitView]
-listHabitsHandler user mInterval = do
-  let uid = User.id user
-  case mInterval of
-    Just Daily -> withDb $ \conn -> map (uncurry toHabitViewDaily) <$> listHabitsWithGoals @'Daily conn uid
-    Just Weekly -> withDb $ \conn -> map (uncurry toHabitViewWeekly) <$> listHabitsWithGoals @'Weekly conn uid
-    Nothing -> do
-      daily <- withDb $ \conn -> map (uncurry toHabitViewDaily) <$> listHabitsWithGoals @'Daily conn uid
-      weekly <- withDb $ \conn -> map (uncurry toHabitViewWeekly) <$> listHabitsWithGoals @'Weekly conn uid
-      pure (daily <> weekly)
+  list u =
+    withDb $ \conn -> map someHabitResponse <$> listHabits conn u.id
 
-data HabitsResource (p :: Interval) = HabitsResource
+  create u req = do
+    start <- maybe (userToday u) pure req.startDate
+    goals <- validateGoalOwnership u.id req.goalIds
+    identifier <- withDb newIdentifier
+    now <- liftIO getCurrentTime
+    SomeHabit h <- orBadRequest (habitFromRequest req identifier u.id goals start now now)
+    withDb $ \conn -> createHabit conn h
+    pure (habitResponse h)
 
-instance (HabitTableSelector p, IntervalTag p, DeadlineJson p) => CrudResource (HabitsResource p) where
-  type Label (HabitsResource p) = "habitId"
-  type InternalId (HabitsResource p) = UUID
-  type CreateReq (HabitsResource p) = CreateHabitRequest p
-  type UpdateReq (HabitsResource p) = UpdateHabitRequest p
-  type Resp (HabitsResource p) = HabitResponse p
+  read u identifier =
+    withDb $ \conn -> fmap someHabitResponse <$> getHabit conn u.id identifier
 
-  parseId _ = UUID.fromText
+  update u identifier req = do
+    mOld <- withDb $ \conn -> getHabit conn u.id identifier
+    for mOld $ \(SomeHabit old) -> do
+      goals <- validateGoalOwnership u.id req.goalIds
+      now <- liftIO getCurrentTime
+      SomeHabit h <- orBadRequest (habitFromRequest req identifier u.id goals (fromMaybe old.startDate req.startDate) old.createdAt now)
+      withDb $ \conn -> updateHabit conn h
+      pure (habitResponse h)
 
-  list _ u =
-    withDb $ \conn -> map toHabitResponseWithGoals <$> listHabitsWithGoals @p conn (User.id u)
+  delete u identifier =
+    withDb $ \conn -> deleteHabit conn u.id identifier
 
-  create _ u (CreateHabitRequest hname hdesc hsort hrate hdeadline goalIdsText) = do
-    _ <- requireNonEmpty "name" hname
-    goalIds <- parseGoalIds goalIdsText
-    validateGoalOwnership (User.id u) goalIds
-    hid <- liftIO UUIDv4.nextRandom
-    habit <- withDb $ \conn -> createHabit @p conn hid (User.id u) hname hdesc hsort hrate hdeadline goalIds
-    pure (toHabitResponseWithGoals (habit, NE.toList goalIds))
+habitsServer :: User -> ServerT HabitsAPI AppM
+habitsServer = crudServer @'HabitEntity
 
-  read _ u hid =
-    withDb $ \conn -> fmap toHabitResponseWithGoals <$> getHabitWithGoals @p conn (User.id u) hid
+-- | some schedule is a schedule of either interval
+data SomeSchedule where
+  SomeSchedule :: Schedule interval -> SomeSchedule
 
-  update _ u hid (UpdateHabitRequest hname hdesc hsort hrate hdeadline goalIdsText) = do
-    _ <- requireNonEmpty "name" hname
-    goalIds <- parseGoalIds goalIdsText
-    validateGoalOwnership (User.id u) goalIds
-    withDb $ \conn -> fmap (toHabitResponseWithGoals . (,NE.toList goalIds)) <$> updateHabit @p conn (User.id u) hid hname hdesc hsort hrate hdeadline goalIds
+-- | the schedule of an interval and optional weekdays, every day when daily without weekdays
+parseSchedule :: Interval -> Maybe Weekdays -> Either String SomeSchedule
+parseSchedule Daily days = Right (SomeSchedule (DailySchedule (fromMaybe everyDay days)))
+parseSchedule Weekly Nothing = Right (SomeSchedule WeeklySchedule)
+parseSchedule Weekly (Just _) = Left "weekdays only apply to daily habits"
 
-  delete _ u hid =
-    withDb $ \conn -> deleteHabit @p Proxy conn (User.id u) hid
+-- | the habit a request describes, given its identity, goals, start and timestamps
+habitFromRequest :: HabitRequest -> HabitIdentifier -> Username -> NonEmpty GoalIdentifier -> Day -> UTCTime -> UTCTime -> Either String SomeHabit
+habitFromRequest req identifier owner goals start created modified = do
+  unless (maybe True (>= start) req.endDate) (Left "endDate must not be before startDate")
+  SomeSchedule s <- parseSchedule req.interval req.weekdays
+  pure (SomeHabit (Habit identifier owner req.title (fromMaybe defaultTarget req.target) req.unit s req.dueTime start req.endDate goals created modified))
 
-toHabitViewDaily :: Habit.HabitT 'Daily Identity -> [UUID] -> HabitView
-toHabitViewDaily (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline createdAt modifiedAt) goalIds =
-  HabitView (UUID.toText hid) Daily hname hdesc hsort hrate (DailyDeadline hdeadline) (map UUID.toText goalIds) createdAt modifiedAt
+someHabitResponse :: SomeHabit -> HabitResponse
+someHabitResponse (SomeHabit h) = habitResponse h
 
-toHabitViewWeekly :: Habit.HabitT 'Weekly Identity -> [UUID] -> HabitView
-toHabitViewWeekly (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline createdAt modifiedAt) goalIds =
-  HabitView (UUID.toText hid) Weekly hname hdesc hsort hrate (WeeklyDeadline hdeadline) (map UUID.toText goalIds) createdAt modifiedAt
-
-toHabitResponseWithGoals :: (Habit.HabitT p Identity, [UUID]) -> HabitResponse p
-toHabitResponseWithGoals (Habit.Habit hid _ hname hdesc _ hsort hrate hdeadline createdAt modifiedAt, goalIds) =
-  HabitResponse (UUID.toText hid) hname hdesc hsort hrate hdeadline (map UUID.toText goalIds) createdAt modifiedAt
+habitResponse :: Habit interval -> HabitResponse
+habitResponse h =
+  HabitResponse h.id h.title h.target h.unit (scheduleInterval h.schedule) (weekdaysOf h.schedule) h.dueTime h.startDate h.endDate (NE.toList h.goals) h.createdAt h.modifiedAt
+  where
+    weekdaysOf :: Schedule interval -> Maybe Weekdays
+    weekdaysOf (DailySchedule days) = Just days
+    weekdaysOf WeeklySchedule = Nothing

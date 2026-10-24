@@ -1,140 +1,70 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 module HIT.DB.Intentions
   ( createIntention,
     getIntention,
-    getIntentionWithGoals,
     listIntentions,
-    listIntentionsWithGoals,
     updateIntention,
     deleteIntention,
-    listIntentionGoals,
   )
 where
 
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NE
-import Data.Proxy (Proxy (..))
-import Data.Text (Text)
-import Data.Time (getCurrentTime)
-import Data.UUID (UUID)
+import Data.Maybe (listToMaybe)
 import Database.Beam
-import Database.Beam.Postgres (runBeamPostgres)
+import Database.Beam.Postgres (rUpper_, runBeamPostgres)
 import Database.PostgreSQL.Simple (Connection, withTransaction)
-import HIT.DB.Schema (IntentionGoalT (..), IntentionTableSelector (..), goals, hitDb, intentionGoals)
-import HIT.Types.Deadline (Deadline, DeadlineJson)
-import HIT.Types.Fraction (Fraction)
-import HIT.Types.Goal qualified as Goal
-import HIT.Types.Intention (Intention, IntentionT (..))
-import HIT.Types.Intention qualified as Intention (IntentionT (..))
-import HIT.Types.Interval (IntervalTag (..))
-import HIT.Types.User (PrimaryKey (UserId))
+import HIT.DB.Codec (decodeIntention, decodeOrThrow, encodeIntention)
+import HIT.DB.Goals (setLinks, withLinks)
+import HIT.DB.Rows (IntentionRow, IntentionRowT (..), PrimaryKey (UserRowId))
+import HIT.DB.Rows qualified as Row (IntentionRowT (..))
+import HIT.DB.Schema (HITDb (..), hitDb)
+import HIT.Types.Identifier (IntentionIdentifier, Username)
+import HIT.Types.Intention (Intention (..), Origin (..), SomeIntention (..))
 
-createIntention :: forall p. (IntentionTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> UUID -> Text -> Text -> Maybe Text -> Fraction -> Deadline p -> NonEmpty UUID -> IO (Intention p)
-createIntention conn intentionId uid iname idesc irate ideadline goalIds = do
-  now <- getCurrentTime
-  let i = Intention intentionId (UserId uid) iname idesc (intervalVal (Proxy @p)) irate ideadline now now
+createIntention :: Connection -> Intention origin interval -> IO ()
+createIntention conn i =
   withTransaction conn $ do
-    runBeamPostgres conn
-      $ runInsert
-      $ insert (intentionTable @p hitDb)
-      $ insertValues [i]
-    insertIntentionGoals conn intentionId goalIds
-  pure i
+    runBeamPostgres conn $ runInsert $ insert (intentions hitDb) $ insertValues [encodeIntention i]
+    setLinks (intentionGoals hitDb) conn i.id i.goals
 
-getIntention :: forall p. (IntentionTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> Text -> UUID -> IO (Maybe (Intention p))
-getIntention conn uid intentionId =
-  runBeamPostgres conn $
-    runSelectReturningOne $
-      select $ do
-        i <- all_ (intentionTable @p hitDb)
-        guard_ (Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
-        pure i
+getIntention :: Connection -> Username -> IntentionIdentifier -> IO (Maybe SomeIntention)
+getIntention conn username identifier = do
+  rows <-
+    runBeamPostgres conn $
+      runSelectReturningList $
+        select $ do
+          i <- all_ (intentions hitDb)
+          guard_ (Row.id i ==. val_ identifier &&. Row.user i ==. UserRowId (val_ username))
+          pure i
+  listToMaybe <$> decodeAll conn rows
 
-getIntentionWithGoals :: forall p. (IntentionTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> Text -> UUID -> IO (Maybe (Intention p, [UUID]))
-getIntentionWithGoals conn uid intentionId = do
-  mIntention <- getIntention @p conn uid intentionId
-  case mIntention of
-    Nothing -> pure Nothing
-    Just i -> do
-      goalsList <- listIntentionGoals conn uid intentionId
-      pure (Just (i, goalsList))
+-- | newest first
+listIntentions :: Connection -> Username -> IO [SomeIntention]
+listIntentions conn username = do
+  rows <-
+    runBeamPostgres conn $
+      runSelectReturningList $
+        select $
+          orderBy_ (desc_ . rUpper_ . Row.window) $ do
+            i <- all_ (intentions hitDb)
+            guard_ (Row.user i ==. UserRowId (val_ username))
+            pure i
+  decodeAll conn rows
 
-listIntentions :: forall p. (IntentionTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> Text -> IO [Intention p]
-listIntentions conn uid =
-  runBeamPostgres conn $
-    runSelectReturningList $
-      select $ do
-        i <- all_ (intentionTable @p hitDb)
-        guard_ (Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
-        pure i
+-- | decoded with their goal links, one query
+decodeAll :: Connection -> [IntentionRow] -> IO [SomeIntention]
+decodeAll conn rows = withLinks (intentionGoals hitDb) conn (.id) rows >>= traverse (decodeOrThrow . uncurry decodeIntention)
 
-listIntentionsWithGoals :: forall p. (IntentionTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> Text -> IO [(Intention p, [UUID])]
-listIntentionsWithGoals conn uid = do
-  is <- listIntentions @p conn uid
-  mapM (\i -> (i,) <$> listIntentionGoals conn uid (Intention.id i)) is
+-- | caller checks ownership
+updateIntention :: Connection -> Intention origin interval -> IO ()
+updateIntention conn i =
+  withTransaction conn $ do
+    runBeamPostgres conn $ runUpdate $ save (intentions hitDb) (encodeIntention i)
+    setLinks (intentionGoals hitDb) conn i.id i.goals
 
-updateIntention :: forall p. (IntentionTableSelector p, DeadlineJson p, IntervalTag p) => Connection -> Text -> UUID -> Text -> Maybe Text -> Fraction -> Deadline p -> NonEmpty UUID -> IO (Maybe (Intention p))
-updateIntention conn uid intentionId iname idesc irate ideadline goalIds = do
-  mExisting <- getIntention @p conn uid intentionId
-  case mExisting of
-    Nothing -> pure Nothing
-    Just (Intention _ _ _ _ _ _ _ createdAtOld _) -> do
-      now <- getCurrentTime
-      withTransaction conn $ do
-        runBeamPostgres conn
-          $ runUpdate
-          $ update
-            (intentionTable @p hitDb)
-            ( \i ->
-                mconcat
-                  [ Intention.name i <-. val_ iname,
-                    Intention.description i <-. val_ idesc,
-                    Intention.interval i <-. val_ (intervalVal (Proxy @p)),
-                    Intention.rate i <-. val_ irate,
-                    Intention.deadline i <-. val_ ideadline,
-                    Intention.modifiedAt i <-. val_ now
-                  ]
-            )
-            (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
-        replaceIntentionGoals conn intentionId goalIds
-      pure (Just (Intention intentionId (UserId uid) iname idesc (intervalVal (Proxy @p)) irate ideadline createdAtOld now))
-
-deleteIntention :: forall p. (IntentionTableSelector p, DeadlineJson p, IntervalTag p) => Proxy p -> Connection -> Text -> UUID -> IO Bool
-deleteIntention _ conn uid intentionId = do
-  mExisting <- getIntention @p conn uid intentionId
-  case mExisting of
-    Nothing -> pure False
-    Just _ -> do
-      runBeamPostgres conn
-        $ runDelete
-        $ delete (intentionTable @p hitDb) (\i -> Intention.id i ==. val_ intentionId &&. Intention.user i ==. UserId (val_ uid) &&. Intention.interval i ==. val_ (intervalVal (Proxy @p)))
-      pure True
-
--- goal mapping helpers
-
-insertIntentionGoals :: Connection -> UUID -> NonEmpty UUID -> IO ()
-insertIntentionGoals conn iid goalIds =
-  runBeamPostgres conn
-    $ runInsert
-    $ insert (intentionGoals hitDb)
-    $ insertValues (NE.toList (fmap (IntentionGoal iid) goalIds))
-
-replaceIntentionGoals :: Connection -> UUID -> NonEmpty UUID -> IO ()
-replaceIntentionGoals conn iid goalIds = do
-  runBeamPostgres conn
-    $ runDelete
-    $ delete (intentionGoals hitDb) (\ig -> intentionId ig ==. val_ iid)
-  insertIntentionGoals conn iid goalIds
-
-listIntentionGoals :: Connection -> Text -> UUID -> IO [UUID]
-listIntentionGoals conn uid iid =
-  runBeamPostgres conn $
-    runSelectReturningList $
-      select $ do
-        ig <- all_ (intentionGoals hitDb)
-        g <- all_ (goals hitDb)
-        guard_ (intentionId ig ==. val_ iid &&. goalId ig ==. Goal.id g &&. Goal.user g ==. UserId (val_ uid))
-        pure (Goal.id g)
+-- | only one-offs, habit occurrences belong to their habit
+deleteIntention :: Connection -> Intention 'OneOff interval -> IO ()
+deleteIntention conn i =
+  runBeamPostgres conn $ runDelete $ delete (intentions hitDb) (\row -> Row.id row ==. val_ i.id)

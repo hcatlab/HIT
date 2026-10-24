@@ -1,59 +1,69 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 
 module HIT.Types.Habit
-  ( Habit,
-    HabitT (..),
+  ( Habit (..),
+    SomeHabit (..),
   )
 where
 
+import Data.Kind (Type)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
-import Data.Time (UTCTime)
-import Data.Typeable (Typeable)
-import Data.UUID (UUID)
-import Database.Beam (Beamable, Columnar, Identity, PrimaryKey, Table (..))
-import GHC.Generics (Generic)
-import HIT.Types.Deadline (Deadline)
-import HIT.Types.Fraction (Fraction)
+import Data.Time (Day, TimeOfDay, UTCTime)
+import Data.Type.Equality (TestEquality (..), (:~:) (..))
+import HIT.Types.Identifier (GoalIdentifier, HabitIdentifier, Username)
 import HIT.Types.Interval (Interval)
-import HIT.Types.Sort (Sort)
-import HIT.Types.User (UserT)
+import HIT.Types.Refined (Target, Title)
+import HIT.Types.Schedule (Schedule)
 import Prelude hiding (id)
 
--- | beam table, indexed by interval
-data HabitT (p :: Interval) f = Habit
-  { id :: Columnar f UUID,
-    user :: PrimaryKey UserT f,
-    name :: Columnar f Text,
-    description :: Columnar f (Maybe Text),
-    interval :: Columnar f Interval,
-    sort :: Columnar f Sort,
-    rate :: Columnar f Fraction,
-    deadline :: Columnar f (Deadline p),
-    createdAt :: Columnar f UTCTime,
-    modifiedAt :: Columnar f UTCTime
+-- | a habit is a recurring intention, which generates an intention for every occurrence
+type Habit :: Interval -> Type
+data Habit interval = Habit
+  { -- | primary key
+    id :: HabitIdentifier,
+    -- | owner
+    owner :: Username,
+    -- | title of each occurrence
+    title :: Title,
+    -- | target of each occurrence
+    target :: Target,
+    -- | unit of target, e.g. km, nothing for a count
+    unit :: Maybe Text,
+    -- | when it occurs, fixing the interval
+    schedule :: Schedule interval,
+    -- | local time each occurrence is due by on its due date
+    dueTime :: Maybe TimeOfDay,
+    -- | no occurrence for days before it
+    startDate :: Day,
+    -- | no occurrence for days after it, nothing for open-ended, at least startDate
+    endDate :: Maybe Day,
+    -- | goals it serves, copied to each occurrence
+    goals :: NonEmpty GoalIdentifier,
+    -- | creation time
+    createdAt :: UTCTime,
+    -- | last update, at least createdAt
+    modifiedAt :: UTCTime
   }
-  deriving (Generic)
 
-type Habit p = HabitT p Identity
+deriving stock instance Show (Habit interval)
 
-deriving instance Show (Habit p)
+deriving stock instance Eq (Habit interval)
 
-deriving instance Eq (Habit p)
+-- | some habit is a habit of either interval, as listed or decoded
+data SomeHabit where
+  SomeHabit :: Habit interval -> SomeHabit
 
-instance Beamable (HabitT p)
+deriving stock instance Show SomeHabit
 
-instance (Typeable p) => Table (HabitT p) where
-  data PrimaryKey (HabitT p) f = HabitId (Columnar f UUID) deriving (Generic)
-  primaryKey (Habit hid _ _ _ _ _ _ _ _ _) = HabitId hid
-
-deriving instance Show (PrimaryKey (HabitT p) Identity)
-
-deriving instance Eq (PrimaryKey (HabitT p) Identity)
-
-instance Beamable (PrimaryKey (HabitT p))
+-- | equal iff the intervals match and the habits are equal
+instance Eq SomeHabit where
+  SomeHabit a == SomeHabit b = case testEquality a.schedule b.schedule of
+    Just Refl -> a == b
+    Nothing -> False

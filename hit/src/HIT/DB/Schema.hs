@@ -7,84 +7,30 @@
 
 module HIT.DB.Schema where
 
+import Data.Int (Int16)
+import Data.Text (Text)
 import Data.Time (UTCTime)
-import Data.UUID (UUID)
 import Database.Beam
 import Database.Beam.Migrate
 import Database.Beam.Postgres (Postgres)
 import Database.Beam.Postgres.Migrate qualified as Pg
-import Database.Beam.Postgres.Syntax (pgJsonType)
-import HIT.Types.Goal (GoalT (..))
-import HIT.Types.Habit (HabitT (..))
-import HIT.Types.Intention (IntentionT (..))
-import HIT.Types.Interval (Interval (..))
-import HIT.Types.User (PrimaryKey (UserId), UserT (..))
+import Database.Beam.Postgres.Syntax (PgDataTypeDescr (..), PgDataTypeSyntax (..), emit, pgDataTypeJSON)
+import HIT.DB.DateRange (dateRangeType)
+import HIT.DB.Rows (GoalLinkT (..), GoalRowT (..), HabitRowT (..), IntentionRowT (..), PrimaryKey (UserRowId), UserRowT (..))
+import HIT.Types.Identifier (Entity (..))
+import HIT.Types.Interval (Interval)
 
 data HITDb f = HITDb
-  { users :: f (TableEntity UserT),
-    goals :: f (TableEntity GoalT),
-    habitsDaily :: f (TableEntity (HabitT 'Daily)),
-    habitsWeekly :: f (TableEntity (HabitT 'Weekly)),
-    intentionsDaily :: f (TableEntity (IntentionT 'Daily)),
-    intentionsWeekly :: f (TableEntity (IntentionT 'Weekly)),
-    habitGoals :: f (TableEntity HabitGoalT),
-    intentionGoals :: f (TableEntity IntentionGoalT)
+  { users :: f (TableEntity UserRowT),
+    goals :: f (TableEntity GoalRowT),
+    habits :: f (TableEntity HabitRowT),
+    intentions :: f (TableEntity IntentionRowT),
+    habitGoals :: f (TableEntity (GoalLinkT 'HabitEntity)),
+    intentionGoals :: f (TableEntity (GoalLinkT 'IntentionEntity))
   }
   deriving (Generic)
 
 instance Database Postgres HITDb
-
--- * goal mapping tables
-
-data HabitGoalT f = HabitGoal
-  { habitId :: Columnar f UUID,
-    goalId :: Columnar f UUID
-  }
-  deriving (Generic)
-
-type HabitGoal = HabitGoalT Identity
-
-instance Beamable HabitGoalT
-
-instance Table HabitGoalT where
-  data PrimaryKey HabitGoalT f = HabitGoalId (Columnar f UUID) (Columnar f UUID) deriving (Generic)
-  primaryKey (HabitGoal hid gid) = HabitGoalId hid gid
-
-instance Beamable (PrimaryKey HabitGoalT)
-
-data IntentionGoalT f = IntentionGoal
-  { intentionId :: Columnar f UUID,
-    goalId :: Columnar f UUID
-  }
-  deriving (Generic)
-
-type IntentionGoal = IntentionGoalT Identity
-
-instance Beamable IntentionGoalT
-
-instance Table IntentionGoalT where
-  data PrimaryKey IntentionGoalT f = IntentionGoalId (Columnar f UUID) (Columnar f UUID) deriving (Generic)
-  primaryKey (IntentionGoal iid gid) = IntentionGoalId iid gid
-
-instance Beamable (PrimaryKey IntentionGoalT)
-
-class HabitTableSelector (p :: Interval) where
-  habitTable :: HITDb f -> f (TableEntity (HabitT p))
-
-instance HabitTableSelector 'Daily where
-  habitTable = habitsDaily
-
-instance HabitTableSelector 'Weekly where
-  habitTable = habitsWeekly
-
-class IntentionTableSelector (p :: Interval) where
-  intentionTable :: HITDb f -> f (TableEntity (IntentionT p))
-
-instance IntentionTableSelector 'Daily where
-  intentionTable = intentionsDaily
-
-instance IntentionTableSelector 'Weekly where
-  intentionTable = intentionsWeekly
 
 -- * schema
 
@@ -95,89 +41,82 @@ checkedHitDb =
     HITDb
       <$> createTable
         "users"
-        ( User
-            (field "id" Pg.text notNull)
+        ( UserRow
+            (field "id" (retype Pg.text) notNull)
             (field "email" Pg.text notNull)
             (field "password_hash" Pg.text notNull)
-            (field "api_token" Pg.text notNull)
+            (field "api_token" (retype Pg.text) notNull)
+            (field "timezone" Pg.text notNull)
             (field "created_at" utcTime notNull)
             (field "modified_at" utcTime notNull)
         )
       <*> createTable
         "goals"
-        ( Goal
-            (field "id" Pg.uuid notNull)
-            (UserId (field "user" Pg.text notNull))
+        ( GoalRow
+            (field "id" (retype Pg.uuid) notNull)
+            (UserRowId (field "user" (retype Pg.text) notNull))
             (field "name" Pg.text notNull)
             (field "description" Pg.text notNull)
             (field "number" int notNull)
             (field "color" Pg.text notNull)
-            (field "start_date" date notNull)
-            (field "end_date" (maybeType date))
+            (field "active" dateRangeType notNull)
             (field "created_at" utcTime notNull)
             (field "modified_at" utcTime notNull)
         )
-      <*> habitsSchema
-      <*> habitsSchema
-      <*> intentionsSchema
-      <*> intentionsSchema
       <*> createTable
-        "goal_habits"
-        ( HabitGoal
-            (field "habit_id" Pg.uuid notNull)
-            (field "goal_id" Pg.uuid notNull)
+        "habits"
+        ( HabitRow
+            (field "id" (retype Pg.uuid) notNull)
+            (UserRowId (field "user" (retype Pg.text) notNull))
+            (field "title" Pg.text notNull)
+            (field "target" double notNull)
+            (field "unit" (maybeType Pg.text))
+            (field "interval" intervalKind notNull)
+            (field "weekdays" (maybeType (retype (smallint :: DataType Postgres Int16))))
+            (field "due_time" (maybeType (time Nothing)))
+            (field "active" dateRangeType notNull)
+            (field "created_at" utcTime notNull)
+            (field "modified_at" utcTime notNull)
         )
       <*> createTable
-        "goal_intentions"
-        ( IntentionGoal
-            (field "intention_id" Pg.uuid notNull)
-            (field "goal_id" Pg.uuid notNull)
+        "intentions"
+        ( IntentionRow
+            (field "id" (retype Pg.uuid) notNull)
+            (UserRowId (field "user" (retype Pg.text) notNull))
+            (field "habit_id" (maybeType (retype Pg.uuid)))
+            (field "title" Pg.text notNull)
+            (field "target" double notNull)
+            (field "unit" (maybeType Pg.text))
+            (field "progress" double notNull)
+            (field "interval" intervalKind notNull)
+            (field "window" dateRangeType notNull)
+            (field "due_time" (maybeType (time Nothing)))
+            (field "done_at" (maybeType utcTime))
+            (field "created_at" utcTime notNull)
+            (field "modified_at" utcTime notNull)
         )
+      <*> goalLinks "habit_goals" "habit_id"
+      <*> goalLinks "intention_goals" "intention_id"
 
 hitDb :: DatabaseSettings Postgres HITDb
 hitDb = unCheckDatabase checkedHitDb
 
--- | daily and weekly habits share one physical table
-habitsSchema :: (Typeable p) => Migration Postgres (CheckedDatabaseEntity Postgres db (TableEntity (HabitT p)))
-habitsSchema =
+goalLinks :: (Typeable entity) => Text -> Text -> Migration Postgres (CheckedDatabaseEntity Postgres db (TableEntity (GoalLinkT entity)))
+goalLinks name ownerCol =
   createTable
-    "habits"
-    ( Habit
-        (field "id" Pg.uuid notNull)
-        (UserId (field "user" Pg.text notNull))
-        (field "name" Pg.text notNull)
-        (field "description" (maybeType Pg.text))
-        (field "interval" (retype Pg.text) notNull)
-        (field "sort" jsonType notNull)
-        (field "rate" jsonType notNull)
-        (field "deadline" jsonType notNull)
-        (field "created_at" utcTime notNull)
-        (field "modified_at" utcTime notNull)
-    )
-
--- | daily and weekly intentions share one physical table
-intentionsSchema :: (Typeable p) => Migration Postgres (CheckedDatabaseEntity Postgres db (TableEntity (IntentionT p)))
-intentionsSchema =
-  createTable
-    "intentions"
-    ( Intention
-        (field "id" Pg.uuid notNull)
-        (UserId (field "user" Pg.text notNull))
-        (field "name" Pg.text notNull)
-        (field "description" (maybeType Pg.text))
-        (field "interval" (retype Pg.text) notNull)
-        (field "rate" jsonType notNull)
-        (field "deadline" jsonType notNull)
-        (field "created_at" utcTime notNull)
-        (field "modified_at" utcTime notNull)
+    name
+    ( GoalLink
+        (field ownerCol (retype Pg.uuid) notNull)
+        (field "goal_id" (retype Pg.uuid) notNull)
     )
 
 -- | same sql type at another haskell type
 retype :: DataType be a -> DataType be b
 retype (DataType t) = DataType t
 
+-- | the interval_kind enum, matched by name
+intervalKind :: DataType Postgres Interval
+intervalKind = DataType (PgDataTypeSyntax (PgDataTypeDescrDomain "interval_kind") (emit "interval_kind") (pgDataTypeJSON "interval_kind"))
+
 utcTime :: DataType Postgres UTCTime
 utcTime = retype timestamptz
-
-jsonType :: DataType Postgres a
-jsonType = DataType pgJsonType

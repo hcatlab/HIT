@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -18,13 +19,14 @@ import Data.ByteString.Lazy qualified as LBS
 import Data.Pool (withResource)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
-import HIT.Api
+import HIT.API
 import HIT.Config (Config (..))
 import HIT.DB (createUser, loginUser, lookupUserByToken)
 import HIT.Env (AppM, Env (..), withDb)
 import HIT.Handlers (goalsServer, habitsServer, intentionsServer, usersServer)
-import HIT.OpenApi (hitSwagger)
-import HIT.Types.User (ApiToken (..), User, UserT (..), toPublicUser)
+import HIT.OpenAPI (hitOpenAPI)
+import HIT.Types.User (APIToken (..), User (..))
+import HIT.Validation (validateTimezone)
 import Network.HTTP.Types.Header (hAuthorization)
 import Network.Wai (Middleware, Request, pathInfo, requestHeaders)
 import Network.Wai.Middleware.Cors
@@ -41,16 +43,16 @@ type instance AuthServerData (AuthProtect "api-token") = User
 mkApp :: Env -> Application
 mkApp env =
   logStdout
-    $ stripApiPrefix
+    $ stripAPIPrefix
     $ cors (corsPolicyForRequest (allowedOrigins (config env)))
     $ serveWithContextT api ctx (`runReaderT` env) server
   where
-    api = Proxy :: Proxy HITApiWithSwagger
+    api = Proxy :: Proxy HITAPIWithDocs
     ctx = authHandler env :. EmptyContext
 
 -- | serve under /api too, for same-origin proxies
-stripApiPrefix :: Middleware
-stripApiPrefix next req =
+stripAPIPrefix :: Middleware
+stripAPIPrefix next req =
   next $ case pathInfo req of
     "api" : rest -> req {pathInfo = rest}
     _ -> req
@@ -82,24 +84,25 @@ isLocalOrigin o =
       "https://[::1]"
     ]
 
-server :: ServerT HITApiWithSwagger AppM
-server = hitApi :<|> pure hitSwagger
+server :: ServerT HITAPIWithDocs AppM
+server = hitAPI :<|> pure hitOpenAPI
   where
-    hitApi = health :<|> signup :<|> login :<|> me :<|> goalsServer :<|> usersServer :<|> habitsServer :<|> intentionsServer
+    hitAPI = health :<|> signup :<|> login :<|> me :<|> goalsServer :<|> usersServer :<|> habitsServer :<|> intentionsServer
 
     health = pure (HealthResponse "ok")
 
-    signup (SignupRequest uid em pw) = do
-      res <- withDb $ \conn -> createUser conn uid em pw
+    signup (SignupRequest uid em pw mTz) = do
+      tz <- maybe (pure "UTC") validateTimezone mTz
+      res <- withDb $ \conn -> createUser conn uid em pw tz
       case res of
         Left msg -> throwError (err409 {errBody = LBS.fromStrict (Text.encodeUtf8 msg)})
-        Right u -> pure (SignupResponse (ApiToken (apiToken u)) (toPublicUser u))
+        Right u -> pure (SignupResponse u.apiToken (toPublicUser u))
 
     login (LoginRequest uid pw) = do
       mUser <- withDb $ \conn -> loginUser conn uid pw
       case mUser of
         Nothing -> throwError err401
-        Just u -> pure (LoginResponse (ApiToken (apiToken u)) (toPublicUser u))
+        Just u -> pure (LoginResponse u.apiToken (toPublicUser u))
 
     me user = pure (toPublicUser user)
 
@@ -109,7 +112,7 @@ authHandler env = mkAuthHandler $ \req -> do
     case extractBearerToken req of
       Nothing -> throwError err401
       Just t -> pure t
-  mUser <- liftIO (withResource (pool env) (\conn -> lookupUserByToken conn (ApiToken tokenText)))
+  mUser <- liftIO (withResource (pool env) (\conn -> lookupUserByToken conn (APIToken tokenText)))
   case mUser of
     Nothing -> throwError err401
     Just u -> pure u

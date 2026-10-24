@@ -2,3 +2,6 @@ packages: */*.cabal
 jobs: $ncpus
 keep-going: true
 tests: True
+-- we provide Arbitrary (Refined p a) ourselves
+package refined
+  flags: -quickcheck

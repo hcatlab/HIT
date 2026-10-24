@@ -1,53 +1,27 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module EncodeDecode (tests) where
 
+import Arbitraries ()
 import Data.Aeson (FromJSON, ToJSON, eitherDecode, encode)
 import Data.ByteString.Lazy qualified as LBS
 import Data.ByteString.Lazy.UTF8 qualified as LBU
-import Data.Containers.ListUtils (nubInt)
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.Text (Text)
-import Data.Text qualified as T
-import Data.Time (Day (ModifiedJulianDay), UTCTime)
-import HIT.Api.Goals (CreateGoalRequest (..), GoalResponse (..), UpdateGoalRequest (..))
-import HIT.Api.Habits
-  ( CreateHabitRequest (..),
-    HabitDeadline (..),
-    HabitResponse (..),
-    HabitView (..),
-    UpdateHabitRequest (..),
-  )
-import HIT.Api.Intentions
-  ( CreateIntentionRequest (..),
-    IntentionDeadline (..),
-    IntentionResponse (..),
-    IntentionView (..),
-    UpdateIntentionRequest (..),
-  )
+import Data.Set qualified as Set
+import Data.Time (DayOfWeek (..))
+import HIT.API.Goals (CreateGoalRequest (..), GoalResponse (..), UpdateGoalRequest (..))
+import HIT.API.Habits (HabitRequest (..), HabitResponse (..))
+import HIT.API.Intentions (CreateIntentionRequest (..), IntentionResponse (..), UpdateIntentionRequest (..))
+import HIT.API.Users (PublicUser)
 import HIT.Types
+import HIT.Types.Refined (refine)
 import Test.QuickCheck
-  ( Arbitrary (..),
-    Gen,
-    NonNegative (..),
-    Positive (..),
-    chooseInt,
-    counterexample,
-    elements,
-    suchThat,
-    (===),
-  )
-import Test.QuickCheck.Gen (oneof, vectorOf)
-import Test.QuickCheck.Instances.Text ()
-import Test.QuickCheck.Instances.UUID ()
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.QuickCheck (Property, testProperty)
+import Test.Tasty.QuickCheck (testProperty)
 
 encodeDecode :: (Eq a, Show a, ToJSON a, FromJSON a) => a -> Property
 encodeDecode x =
@@ -63,186 +37,8 @@ decodeEncode (LBS lbs) =
     Right y -> encode y === lbs
     Left err -> counterexample err False
 
-instance Arbitrary Fraction where
-  arbitrary = do
-    NonNegative x <- arbitrary
-    Positive y <- arbitrary
-    return $ Fraction x y
-
-instance Arbitrary (LBS Fraction) where
-  arbitrary = do
-    NonNegative x <- arbitrary :: Gen (NonNegative Int)
-    Positive y <- arbitrary :: Gen (Positive Int)
-    return . LBS . LBU.fromString $ ['"'] ++ show x ++ "/" ++ show y ++ ['"']
-
-nonEmptyTextGen :: Gen (NonEmpty Text)
-nonEmptyTextGen = do
-  x <- arbitrary
-  xs <- arbitrary
-  pure (x :| xs)
-
-instance Arbitrary Interval where
-  arbitrary = elements [Daily, Weekly]
-
 instance Arbitrary (LBS Interval) where
-  arbitrary = do
-    s <- elements ["\"daily\"", "\"weekly\""]
-    return . LBS . LBU.fromString $ s
-
-instance Arbitrary Hours where
-  arbitrary = do
-    hours <- chooseInt (0, 23)
-    listOfHours <- vectorOf hours (chooseInt (0, 23))
-    let uniqueSortedHours = nubInt listOfHours
-    return $ Hours uniqueSortedHours
-
-instance Arbitrary Weekdays where
-  arbitrary =
-    Weekdays
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-
-instance Arbitrary (Deadline Daily) where
-  arbitrary = DayHours <$> arbitrary
-
-instance Arbitrary (Deadline Weekly) where
-  arbitrary = WeekHours <$> arbitrary
-
-instance Arbitrary Sort where
-  arbitrary =
-    oneof [return True, return False]
-      >>= \toss ->
-        if toss
-          then YesNo <$> arbitrary
-          else Times <$> arbitrary
-
--- habits api payloads
-instance Arbitrary HabitDeadline where
-  arbitrary = do
-    interval <- arbitrary :: Gen Interval
-    case interval of
-      Daily -> DailyDeadline <$> arbitrary
-      Weekly -> WeeklyDeadline <$> arbitrary
-
--- habit view, unified list
-
-instance Arbitrary UTCTime where
-  arbitrary = pure (read "2023-01-01 00:00:00 UTC")
-
--- goals crud payloads and responses
-nonEmptyText :: Gen Text
-nonEmptyText = arbitrary `suchThat` (not . T.null)
-
-instance Arbitrary CreateGoalRequest where
-  arbitrary = CreateGoalRequest <$> arbitrary <*> nonEmptyText <*> arbitrary <*> arbitrary <*> arbitrary
-
-instance Arbitrary UpdateGoalRequest where
-  arbitrary = UpdateGoalRequest <$> arbitrary <*> nonEmptyText <*> arbitrary <*> arbitrary <*> arbitrary
-
-instance Arbitrary GoalResponse where
-  arbitrary = GoalResponse <$> arbitrary <*> chooseInt (1, 100) <*> arbitrary <*> nonEmptyText <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
-
-instance Arbitrary Day where
-  arbitrary = ModifiedJulianDay <$> arbitrary
-
-instance Arbitrary HabitView where
-  arbitrary = do
-    interval <- arbitrary :: Gen Interval
-    deadline <- case interval of
-      Daily -> DailyDeadline <$> arbitrary
-      Weekly -> WeeklyDeadline <$> arbitrary
-    goals <- arbitrary :: Gen [Text]
-    createdAt <- arbitrary
-    modifiedAt <- arbitrary
-    HabitView
-      <$> arbitrary -- id
-      <*> pure interval
-      <*> arbitrary -- name
-      <*> arbitrary -- description
-      <*> arbitrary -- sort
-      <*> arbitrary -- rate
-      <*> pure deadline
-      <*> pure goals
-      <*> pure createdAt
-      <*> pure modifiedAt
-
--- habit crud payloads and responses, per interval
-instance Arbitrary (CreateHabitRequest 'Daily) where
-  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> nonEmptyTextGen
-
-instance Arbitrary (CreateHabitRequest 'Weekly) where
-  arbitrary = CreateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> nonEmptyTextGen
-
-instance Arbitrary (UpdateHabitRequest 'Daily) where
-  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> nonEmptyTextGen
-
-instance Arbitrary (UpdateHabitRequest 'Weekly) where
-  arbitrary = UpdateHabitRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> nonEmptyTextGen
-
-instance Arbitrary (HabitResponse 'Daily) where
-  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> (arbitrary :: Gen [Text]) <*> arbitrary <*> arbitrary
-
-instance Arbitrary (HabitResponse 'Weekly) where
-  arbitrary = HabitResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> (arbitrary :: Gen [Text]) <*> arbitrary <*> arbitrary
-
--- intentions api payloads
-instance Arbitrary IntentionDeadline where
-  arbitrary = do
-    interval <- arbitrary :: Gen Interval
-    case interval of
-      Daily -> DailyIntentionDeadline <$> arbitrary
-      Weekly -> WeeklyIntentionDeadline <$> arbitrary
-
--- intention view, unified list
-instance Arbitrary IntentionView where
-  arbitrary = do
-    interval <- arbitrary :: Gen Interval
-    deadline <- case interval of
-      Daily -> DailyIntentionDeadline <$> arbitrary
-      Weekly -> WeeklyIntentionDeadline <$> arbitrary
-    goals <- arbitrary :: Gen [Text]
-    createdAt <- arbitrary
-    modifiedAt <- arbitrary
-    IntentionView
-      <$> arbitrary -- id
-      <*> pure interval
-      <*> arbitrary -- name
-      <*> arbitrary -- description
-      <*> arbitrary -- rate
-      <*> pure deadline
-      <*> pure goals
-      <*> pure createdAt
-      <*> pure modifiedAt
-
--- intention crud payloads and responses, per interval
-instance Arbitrary (CreateIntentionRequest 'Daily) where
-  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> nonEmptyTextGen
-
-instance Arbitrary (CreateIntentionRequest 'Weekly) where
-  arbitrary = CreateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> nonEmptyTextGen
-
-instance Arbitrary (UpdateIntentionRequest 'Daily) where
-  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> nonEmptyTextGen
-
-instance Arbitrary (UpdateIntentionRequest 'Weekly) where
-  arbitrary = UpdateIntentionRequest <$> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> nonEmptyTextGen
-
-instance Arbitrary (IntentionResponse 'Daily) where
-  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Daily)) <*> (arbitrary :: Gen [Text]) <*> arbitrary <*> arbitrary
-
-instance Arbitrary (IntentionResponse 'Weekly) where
-  arbitrary = IntentionResponse <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> (arbitrary :: Gen (Deadline 'Weekly)) <*> (arbitrary :: Gen [Text]) <*> arbitrary <*> arbitrary
-
-instance Arbitrary ApiToken where
-  arbitrary = ApiToken <$> arbitrary
-
-instance Arbitrary PublicUser where
-  arbitrary = PublicUser <$> arbitrary <*> arbitrary
+  arbitrary = LBS . LBU.fromString <$> elements ["\"daily\"", "\"weekly\""]
 
 -- test tree
 tests :: TestTree
@@ -251,36 +47,21 @@ tests =
     "Property Tests"
     [ testGroup
         "Encode-Decode Tests for JSON instances"
-        [ testProperty "encodeDecode Fraction" (encodeDecode :: Fraction -> Property),
-          testProperty "decodeEncode Fraction" (decodeEncode :: LBS Fraction -> Property),
-          testProperty "encodeDecode Interval" (encodeDecode :: Interval -> Property),
+        [ testProperty "encodeDecode Interval" (encodeDecode :: Interval -> Property),
           testProperty "decodeEncode Interval" (decodeEncode :: LBS Interval -> Property),
-          testProperty "encodeDecode Hours" (encodeDecode :: Hours -> Property),
           testProperty "encodeDecode Weekdays" (encodeDecode :: Weekdays -> Property),
-          testProperty "encodeDecode Deadline Daily" (encodeDecode :: Deadline Daily -> Property),
-          testProperty "encodeDecode Deadline Weekly" (encodeDecode :: Deadline Weekly -> Property),
-          testProperty "encodeDecode Sort" (encodeDecode :: Sort -> Property),
-          -- goals crud payloads and responses
+          testProperty "Weekdays as day names"
+            $ once
+            $ either (const Nothing) (Just . encode . Weekdays) (refine (Set.fromList [Friday, Wednesday])) === Just "[\"wednesday\",\"friday\"]",
           testProperty "encodeDecode CreateGoalRequest" (encodeDecode :: CreateGoalRequest -> Property),
           testProperty "encodeDecode UpdateGoalRequest" (encodeDecode :: UpdateGoalRequest -> Property),
           testProperty "encodeDecode GoalResponse" (encodeDecode :: GoalResponse -> Property),
-          -- habits unified list view and per-interval crud payloads
-          testProperty "encodeDecode HabitView" (encodeDecode :: HabitView -> Property),
-          testProperty "encodeDecode CreateHabitRequest Daily" (encodeDecode :: CreateHabitRequest 'Daily -> Property),
-          testProperty "encodeDecode CreateHabitRequest Weekly" (encodeDecode :: CreateHabitRequest 'Weekly -> Property),
-          testProperty "encodeDecode UpdateHabitRequest Daily" (encodeDecode :: UpdateHabitRequest 'Daily -> Property),
-          testProperty "encodeDecode UpdateHabitRequest Weekly" (encodeDecode :: UpdateHabitRequest 'Weekly -> Property),
-          testProperty "encodeDecode HabitResponse Daily" (encodeDecode :: HabitResponse 'Daily -> Property),
-          testProperty "encodeDecode HabitResponse Weekly" (encodeDecode :: HabitResponse 'Weekly -> Property),
-          -- intentions unified list view and per-interval crud payloads
-          testProperty "encodeDecode IntentionView" (encodeDecode :: IntentionView -> Property),
-          testProperty "encodeDecode CreateIntentionRequest Daily" (encodeDecode :: CreateIntentionRequest 'Daily -> Property),
-          testProperty "encodeDecode CreateIntentionRequest Weekly" (encodeDecode :: CreateIntentionRequest 'Weekly -> Property),
-          testProperty "encodeDecode UpdateIntentionRequest Daily" (encodeDecode :: UpdateIntentionRequest 'Daily -> Property),
-          testProperty "encodeDecode UpdateIntentionRequest Weekly" (encodeDecode :: UpdateIntentionRequest 'Weekly -> Property),
-          testProperty "encodeDecode IntentionResponse Daily" (encodeDecode :: IntentionResponse 'Daily -> Property),
-          testProperty "encodeDecode IntentionResponse Weekly" (encodeDecode :: IntentionResponse 'Weekly -> Property),
-          testProperty "encodeDecode ApiToken" (encodeDecode :: ApiToken -> Property),
+          testProperty "encodeDecode HabitRequest" (encodeDecode :: HabitRequest -> Property),
+          testProperty "encodeDecode HabitResponse" (encodeDecode :: HabitResponse -> Property),
+          testProperty "encodeDecode CreateIntentionRequest" (encodeDecode :: CreateIntentionRequest -> Property),
+          testProperty "encodeDecode UpdateIntentionRequest" (encodeDecode :: UpdateIntentionRequest -> Property),
+          testProperty "encodeDecode IntentionResponse" (encodeDecode :: IntentionResponse -> Property),
+          testProperty "encodeDecode APIToken" (encodeDecode :: APIToken -> Property),
           testProperty "encodeDecode PublicUser" (encodeDecode :: PublicUser -> Property)
         ]
     ]

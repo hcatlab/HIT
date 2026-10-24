@@ -2,19 +2,23 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module HIT.Api.Auth where
+module HIT.API.Auth where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import HIT.Types.User (ApiToken, PublicUser)
+import HIT.API.Users (PublicUser)
+import HIT.Types.Identifier (Username)
+import HIT.Types.User (APIToken)
 
 -- * signup
 
+-- | timezone defaults to UTC
 data SignupRequest = SignupRequest
-  { id :: Text,
+  { id :: Username,
     email :: Text,
-    password :: Text
+    password :: Text,
+    timezone :: Maybe Text
   }
   deriving (Show, Eq, Generic)
 
@@ -23,7 +27,7 @@ instance ToJSON SignupRequest
 instance FromJSON SignupRequest
 
 data SignupResponse = SignupResponse
-  { token :: ApiToken,
+  { token :: APIToken,
     user :: PublicUser
   }
   deriving (Show, Eq, Generic)
@@ -35,7 +39,7 @@ instance FromJSON SignupResponse
 -- * login
 
 data LoginRequest = LoginRequest
-  { id :: Text,
+  { id :: Username,
     password :: Text
   }
   deriving (Show, Eq, Generic)
@@ -45,7 +49,7 @@ instance ToJSON LoginRequest
 instance FromJSON LoginRequest
 
 data LoginResponse = LoginResponse
-  { token :: ApiToken,
+  { token :: APIToken,
     user :: PublicUser
   }
   deriving (Show, Eq, Generic)

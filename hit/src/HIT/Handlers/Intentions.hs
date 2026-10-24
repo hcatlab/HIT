@@ -1,107 +1,114 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module HIT.Handlers.Intentions
   ( intentionsServer,
-    IntentionsApi,
+    intentionResponse,
   )
 where
 
 import Control.Monad.IO.Class (liftIO)
 import Data.List.NonEmpty qualified as NE
-import Data.UUID (UUID)
-import Data.UUID qualified as UUID
-import Data.UUID.V4 qualified as UUIDv4
-import Database.Beam (Identity)
-import HIT.Api.Intentions
-  ( CreateIntentionRequest (..),
-    IntentionDeadline (..),
-    IntentionResponse (..),
-    IntentionView (..),
-    IntentionsApi,
-    UpdateIntentionRequest (..),
-  )
-import HIT.Crud (CrudResource (..), crudServerTc)
-import HIT.DB
-  ( createIntention,
-    deleteIntention,
-    getIntentionWithGoals,
-    listIntentionsWithGoals,
-    updateIntention,
-  )
-import HIT.DB.Schema (IntentionTableSelector)
+import Data.Maybe (fromMaybe)
+import Data.Time (getCurrentTime)
+import Data.Traversable (for)
+import HIT.API.Intentions (CreateIntentionRequest (..), IntentionResponse (..), IntentionsAPI, UpdateIntentionRequest (..))
+import HIT.CRUD (CRUDResource (..), crudServer)
+import HIT.DB (createIntention, deleteIntention, getIntention, listIntentions, updateIntention)
 import HIT.Env (AppM, withDb)
-import HIT.Types.Deadline (DeadlineJson)
-import HIT.Types.Intention qualified as Intention (IntentionT (..))
-import HIT.Types.Interval (Interval (Daily, Weekly), IntervalTag)
+import HIT.Handlers.Users (userToday)
+import HIT.Types.Identifier (Entity (..), HabitIdentifier, newIdentifier)
+import HIT.Types.Intention (Intention (Intention), SomeIntention (..), Source (..), recordProgress)
+import HIT.Types.Intention qualified as Intention (Intention (..))
+import HIT.Types.Refined (defaultTarget, noProgress)
+import HIT.Types.Schedule (Window (..), windowBounds, windowInterval)
 import HIT.Types.User (User)
-import HIT.Types.User qualified as User (UserT (..))
-import HIT.Validation (parseGoalIds, requireNonEmpty, validateGoalOwnership)
+import HIT.Types.User qualified as User (User (..))
+import HIT.Validation (validateGoalOwnership)
 import Servant
 import Prelude hiding (id, read)
 
-intentionsServer :: User -> ServerT IntentionsApi AppM
-intentionsServer user =
-  listIntentionsHandler user
-    :<|> crudServerTc (IntentionsResource @'Daily) user
-    :<|> crudServerTc (IntentionsResource @'Weekly) user
+instance CRUDResource 'IntentionEntity where
+  type Label 'IntentionEntity = "intentionId"
+  type CreateRequest 'IntentionEntity = CreateIntentionRequest
+  type UpdateRequest 'IntentionEntity = UpdateIntentionRequest
+  type Response 'IntentionEntity = IntentionResponse
 
-listIntentionsHandler :: User -> Maybe Interval -> AppM [IntentionView]
-listIntentionsHandler user mInterval = do
-  let uid = User.id user
-  case mInterval of
-    Just Daily -> withDb $ \conn -> map (uncurry toIntentionViewDaily) <$> listIntentionsWithGoals @'Daily conn uid
-    Just Weekly -> withDb $ \conn -> map (uncurry toIntentionViewWeekly) <$> listIntentionsWithGoals @'Weekly conn uid
-    Nothing -> do
-      daily <- withDb $ \conn -> map (uncurry toIntentionViewDaily) <$> listIntentionsWithGoals @'Daily conn uid
-      weekly <- withDb $ \conn -> map (uncurry toIntentionViewWeekly) <$> listIntentionsWithGoals @'Weekly conn uid
-      pure (daily <> weekly)
+  list u =
+    withDb $ \conn -> map someIntentionResponse <$> listIntentions conn u.id
 
-data IntentionsResource (p :: Interval) = IntentionsResource
+  -- a one-off for a single day
+  create u req = do
+    goals <- validateGoalOwnership u.id req.goalIds
+    day <- maybe (userToday u) pure req.date
+    identifier <- withDb newIdentifier
+    now <- liftIO getCurrentTime
+    let i = Intention identifier u.id OneOffSource req.title (fromMaybe defaultTarget req.target) req.unit noProgress (DailyWindow day) req.dueTime Nothing goals now now
+    withDb $ \conn -> createIntention conn i
+    pure (intentionResponse i)
 
-instance (IntentionTableSelector p, IntervalTag p, DeadlineJson p) => CrudResource (IntentionsResource p) where
-  type Label (IntentionsResource p) = "intentionId"
-  type InternalId (IntentionsResource p) = UUID
-  type CreateReq (IntentionsResource p) = CreateIntentionRequest p
-  type UpdateReq (IntentionsResource p) = UpdateIntentionRequest p
-  type Resp (IntentionsResource p) = IntentionResponse p
+  read u identifier =
+    withDb $ \conn -> fmap someIntentionResponse <$> getIntention conn u.id identifier
 
-  parseId _ = UUID.fromText
+  update u identifier req = do
+    goals <- validateGoalOwnership u.id req.goalIds
+    mOld <- withDb $ \conn -> getIntention conn u.id identifier
+    for mOld $ \(SomeIntention old) -> do
+      now <- liftIO getCurrentTime
+      let revised =
+            recordProgress
+              now
+              req.progress
+              old
+                { Intention.title = req.title,
+                  Intention.target = req.target,
+                  Intention.unit = req.unit,
+                  Intention.dueTime = req.dueTime,
+                  Intention.goals = goals,
+                  Intention.modifiedAt = now
+                }
+      withDb $ \conn -> updateIntention conn revised
+      pure (intentionResponse revised)
 
-  list _ u =
-    withDb $ \conn -> map toIntentionResponseWithGoals <$> listIntentionsWithGoals @p conn (User.id u)
+  -- only one-offs, by type
+  delete u identifier = do
+    mOld <- withDb $ \conn -> getIntention conn u.id identifier
+    case mOld of
+      Nothing -> pure False
+      Just (SomeIntention i) -> case i.source of
+        OneOffSource -> True <$ withDb (`deleteIntention` i)
+        RecurringSource _ -> throwError err400 {errBody = "habit occurrences can't be deleted, edit the habit instead"}
 
-  create _ u (CreateIntentionRequest iname idesc irate ideadline goalIdsText) = do
-    _ <- requireNonEmpty "name" iname
-    goalIds <- parseGoalIds goalIdsText
-    validateGoalOwnership (User.id u) goalIds
-    iid <- liftIO UUIDv4.nextRandom
-    intention <- withDb $ \conn -> createIntention @p conn iid (User.id u) iname idesc irate ideadline goalIds
-    pure (toIntentionResponseWithGoals (intention, NE.toList goalIds))
+intentionsServer :: User -> ServerT IntentionsAPI AppM
+intentionsServer = crudServer @'IntentionEntity
 
-  read _ u iid =
-    withDb $ \conn -> fmap toIntentionResponseWithGoals <$> getIntentionWithGoals @p conn (User.id u) iid
+someIntentionResponse :: SomeIntention -> IntentionResponse
+someIntentionResponse (SomeIntention i) = intentionResponse i
 
-  update _ u iid (UpdateIntentionRequest iname idesc irate ideadline goalIdsText) = do
-    _ <- requireNonEmpty "name" iname
-    goalIds <- parseGoalIds goalIdsText
-    validateGoalOwnership (User.id u) goalIds
-    withDb $ \conn -> fmap (toIntentionResponseWithGoals . (,NE.toList goalIds)) <$> updateIntention @p conn (User.id u) iid iname idesc irate ideadline goalIds
-
-  delete _ u iid =
-    withDb $ \conn -> deleteIntention @p Proxy conn (User.id u) iid
-
-toIntentionViewDaily :: Intention.IntentionT 'Daily Identity -> [UUID] -> IntentionView
-toIntentionViewDaily (Intention.Intention iid _ iname idesc _ irate ideadline createdAt modifiedAt) goalIds =
-  IntentionView (UUID.toText iid) Daily iname idesc irate (DailyIntentionDeadline ideadline) (map UUID.toText goalIds) createdAt modifiedAt
-
-toIntentionViewWeekly :: Intention.IntentionT 'Weekly Identity -> [UUID] -> IntentionView
-toIntentionViewWeekly (Intention.Intention iid _ iname idesc _ irate ideadline createdAt modifiedAt) goalIds =
-  IntentionView (UUID.toText iid) Weekly iname idesc irate (WeeklyIntentionDeadline ideadline) (map UUID.toText goalIds) createdAt modifiedAt
-
-toIntentionResponseWithGoals :: (Intention.IntentionT p Identity, [UUID]) -> IntentionResponse p
-toIntentionResponseWithGoals (Intention.Intention iid _ iname idesc _ irate ideadline createdAt modifiedAt, goalIds) =
-  IntentionResponse (UUID.toText iid) iname idesc irate ideadline (map UUID.toText goalIds) createdAt modifiedAt
+intentionResponse :: Intention origin interval -> IntentionResponse
+intentionResponse i =
+  IntentionResponse
+    i.id
+    (habitOf i.source)
+    i.title
+    i.target
+    i.unit
+    i.progress
+    (windowInterval i.window)
+    start
+    due
+    i.dueTime
+    i.doneAt
+    (NE.toList i.goals)
+    i.createdAt
+    i.modifiedAt
+  where
+    (start, due) = windowBounds i.window
+    habitOf :: Source origin -> Maybe HabitIdentifier
+    habitOf OneOffSource = Nothing
+    habitOf (RecurringSource h) = Just h
