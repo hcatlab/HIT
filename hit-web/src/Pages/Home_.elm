@@ -2,6 +2,7 @@ module Pages.Home_ exposing (Model, Msg, page)
 
 import Effect exposing (Effect)
 import Html
+import Html.Attributes as Attr
 import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
@@ -65,7 +66,11 @@ view : Model -> View Msg
 view _ =
     { title = "Home"
     , body =
-        [ Html.blockquote []
+        [ Html.article [ Attr.attribute "role" "note" ]
+            [ Html.mark [] [ Html.text "Warning" ]
+            , Html.text " This site is in alpha for testing, and data may be dropped at any time."
+            ]
+        , Html.blockquote []
             [ Html.text "To achieve great things, two things are needed: a plan, and not quite enough time."
             , Html.br [] []
             , Html.text "— Leonard Bernstein"
