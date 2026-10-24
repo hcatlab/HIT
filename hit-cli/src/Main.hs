@@ -1,3 +1,4 @@
+-- | the hit command line client
 module Main where
 
 import Data.Aeson (FromJSON (..))
@@ -12,13 +13,19 @@ import Network.HTTP.Client
   )
 import Options.Applicative
 
-data Command = Health deriving (Show)
+-- | a command is a cli subcommand
+data Command
+  = -- | check server health
+    Health
+  deriving (Show)
 
+-- | subcommands
 commandParser :: Parser Command
 commandParser =
   hsubparser
     (command "health" (info (pure Health) (progDesc "Check server health")))
 
+-- | parse and run a command
 main :: IO ()
 main = do
   cmd <- execParser opts
@@ -32,14 +39,18 @@ main = do
             <> header "hit - interact with HIT server"
         )
 
+-- | run a command
 handleCommand :: Command -> IO ()
 handleCommand Health = checkHealth
 
+-- | a health response is the body of the server's health check
 newtype HealthResponse = HealthResponse
-  { status :: String
+  { -- | server status
+    status :: String
   }
   deriving (FromJSON)
 
+-- | query the local server's health endpoint
 checkHealth :: IO ()
 checkHealth = do
   putStrLn "Checking server health..."
