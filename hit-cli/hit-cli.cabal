@@ -8,9 +8,8 @@ category:      CLI
 build-type:    Simple
 tested-with:   GHC ==9.12.2
 
-executable hit
-  main-is:          Main.hs
-  other-modules:
+library
+  exposed-modules:  HIT.CLI
   build-depends:
     , aeson                 >=2.2.3.0
     , base                  >=4.18
@@ -21,5 +20,15 @@ executable hit
     , text                  >=1.2
 
   hs-source-dirs:   src
+  default-language: GHC2021
+  ghc-options:      -Wall
+
+executable hit
+  main-is:          Main.hs
+  build-depends:
+    , base     >=4.18
+    , hit-cli
+
+  hs-source-dirs:   app
   default-language: GHC2021
   ghc-options:      -Wall -O2 -threaded

@@ -91,3 +91,4 @@ jobs:
         with:
           pattern: |
             hit-cli/src/*.hs
+            hit-cli/app/*.hs

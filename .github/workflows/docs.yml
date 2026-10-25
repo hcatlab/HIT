@@ -69,13 +69,13 @@ jobs:
       - name: Haddock
         run: |
           cabal haddock hit:lib:hit --haddock-hyperlink-source --haddock-quickjump
-          cabal haddock hit-cli:exe:hit --haddock-executables --haddock-hyperlink-source --haddock-quickjump
+          cabal haddock hit-cli:lib:hit-cli --haddock-hyperlink-source --haddock-quickjump
 
       - name: Assemble site
         run: |
           hit=$(find dist-newstyle/build -type d -path '*/hit-0.1.0.0/doc/html/hit' | head -1)
-          cli=$(dirname "$(find dist-newstyle/build -type f -name index.html -path '*/hit-cli-0.1.0.0/*/doc/html/*' | head -1)")
-          test -n "$hit" && test -f "$cli/index.html"
+          cli=$(find dist-newstyle/build -type d -path '*/hit-cli-0.1.0.0/doc/html/hit-cli' | head -1)
+          test -f "$hit/index.html" && test -f "$cli/index.html"
           mkdir -p site
           cp -R "$hit" site/hit
           cp -R "$cli" site/hit-cli

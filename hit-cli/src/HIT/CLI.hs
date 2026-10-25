@@ -1,5 +1,8 @@
 -- | the hit command line client
-module Main where
+module HIT.CLI
+  ( run,
+  )
+where
 
 import Data.Aeson (FromJSON (..))
 import Data.Aeson qualified as Aeson
@@ -26,8 +29,8 @@ commandParser =
     (command "health" (info (pure Health) (progDesc "Check server health")))
 
 -- | parse and run a command
-main :: IO ()
-main = do
+run :: IO ()
+run = do
   cmd <- execParser opts
   handleCommand cmd
   where
