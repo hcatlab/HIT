@@ -1,4 +1,4 @@
-FROM haskell:9.12-bookworm AS builder
+FROM haskell:9.14-bookworm AS builder
 
 RUN set -eux; \
     apt-get update; \
