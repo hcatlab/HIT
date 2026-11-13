@@ -59,16 +59,6 @@ loginUser conn uname password_ = do
       pure (Just u)
     _ -> pure Nothing
 
-lookupUserByToken :: Connection -> APIToken -> IO (Maybe User)
-lookupUserByToken conn tok =
-  decodeOne $
-    runBeamPostgres conn $
-      runSelectReturningOne $
-        select $ do
-          u <- all_ (users hitDb)
-          guard_ (Row.apiToken u ==. val_ tok)
-          pure u
-
 getUserById :: Connection -> Username -> IO (Maybe User)
 getUserById conn uid =
   decodeOne $
