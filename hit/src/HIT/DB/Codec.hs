@@ -119,11 +119,11 @@ refined :: (Predicate predicate x) => x -> Either DecodeError (Refined predicate
 refined = first (RefinementFailed . displayException) . refine
 
 encodeUser :: User -> UserRow
-encodeUser u = UserRow u.id u.email u.passwordHash u.apiToken u.timezone u.createdAt u.modifiedAt
+encodeUser u = UserRow u.id u.email u.passwordHash u.timezone u.createdAt u.modifiedAt
 
 -- | users have no invariants beyond their row
 decodeUser :: UserRow -> Either DecodeError User
-decodeUser r = Right (User r.id r.email r.passwordHash r.apiToken r.timezone r.createdAt r.modifiedAt)
+decodeUser r = Right (User r.id r.email r.passwordHash r.timezone r.createdAt r.modifiedAt)
 
 encodeGoal :: Goal -> GoalRow
 encodeGoal g =
