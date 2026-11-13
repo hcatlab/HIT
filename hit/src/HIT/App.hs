@@ -21,7 +21,7 @@ import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import HIT.API
 import HIT.Config (Config (..))
-import HIT.DB (createUser, loginUser, lookupUserByToken, getUserById)
+import HIT.DB (createUser, loginUser, getUserById)
 import HIT.Env (AppM, Env (..), withDb)
 import HIT.Handlers (goalsServer, habitsServer, intentionsServer, usersServer)
 import HIT.OpenAPI (hitOpenAPI)
