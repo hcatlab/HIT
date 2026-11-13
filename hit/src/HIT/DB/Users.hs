@@ -34,10 +34,9 @@ import HIT.Types.User (APIToken (..), User (..))
 
 createUser :: Connection -> Username -> Text -> Text -> Text -> IO (Either Text User)
 createUser conn username_ email_ password_ tz = do
-  tok <- newToken
   pwHash <- hashPasswordText password_
   now <- getCurrentTime
-  let u = User username_ email_ pwHash tok tz now now
+  let u = User username_ email_ pwHash tz now now
   ( Right <$> do
       runBeamPostgres conn
         $ runInsert
