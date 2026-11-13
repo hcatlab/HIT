@@ -45,8 +45,6 @@ data UserRowT f = UserRow
     email :: Columnar f Text,
     -- | bcrypt hash of the password
     passwordHash :: Columnar f Text,
-    -- | bearer token, unique
-    apiToken :: Columnar f APIToken,
     -- | iana zone name
     timezone :: Columnar f Text,
     -- | creation time
