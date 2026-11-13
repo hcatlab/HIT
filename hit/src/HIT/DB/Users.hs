@@ -56,10 +56,6 @@ loginUser conn uname password_ = do
   mUser <- getUserById conn uname
   case mUser of
     Just u | validatePassword (Text.encodeUtf8 u.passwordHash) (Text.encodeUtf8 password_) -> do
-      --tok <- newToken
-      --let u' = u {apiToken = tok}
-      --runBeamPostgres conn $ runUpdate $ save (users hitDb) (encodeUser u')
-      --pure (Just u')
       pure (Just u)
     _ -> pure Nothing
 

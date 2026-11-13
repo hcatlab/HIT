@@ -99,7 +99,6 @@ server = hitAPI :<|> pure hitOpenAPI
       res <- withDb $ \conn -> createUser conn uid em pw tz
       case res of
         Left msg -> throwError (err409 {errBody = LBS.fromStrict (Text.encodeUtf8 msg)})
-        --Right u -> pure (SignupResponse u.apiToken (toPublicUser u))
         Right u -> do
           signedClaims <- liftIO $ signClaims secretKey (makeClaims u.id)
 
@@ -113,10 +112,6 @@ server = hitAPI :<|> pure hitOpenAPI
           signedClaims <- liftIO $ signClaims secretKey (makeClaims u.id)
 
           pure (LoginResponse (APIToken signedClaims) (toPublicUser u))
-          
-          
-          --pure (LoginResponse u.apiToken (toPublicUser u))
-
     me user = pure (toPublicUser user)
 
 --update to verify the JWT token NOT do a db lookup to compare tokens
