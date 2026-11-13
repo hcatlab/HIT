@@ -51,15 +51,17 @@ createUser conn username_ email_ password_ tz = do
         then pure (Left "username or email already exists")
         else throwIO e
 
+--update for JWT by removing token from login as JWT are stored in browser and just key stored on server
 loginUser :: Connection -> Username -> Text -> IO (Maybe User)
 loginUser conn uname password_ = do
   mUser <- getUserById conn uname
   case mUser of
     Just u | validatePassword (Text.encodeUtf8 u.passwordHash) (Text.encodeUtf8 password_) -> do
-      tok <- newToken
-      let u' = u {apiToken = tok}
-      runBeamPostgres conn $ runUpdate $ save (users hitDb) (encodeUser u')
-      pure (Just u')
+      --tok <- newToken
+      --let u' = u {apiToken = tok}
+      --runBeamPostgres conn $ runUpdate $ save (users hitDb) (encodeUser u')
+      --pure (Just u')
+      pure (Just u)
     _ -> pure Nothing
 
 lookupUserByToken :: Connection -> APIToken -> IO (Maybe User)
