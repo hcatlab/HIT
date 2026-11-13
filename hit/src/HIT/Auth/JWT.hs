@@ -1,26 +1,34 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
+
+
 module HIT.Auth.JWT
         (
-                
+          makeClaims
+        , signClaims
+        , secretKey 
+        , validateJWT      
         ) 
         where
 
 import Data.Text (Text)
 import qualified Web.JWT as JWT
-import Data.Time.Clock (UTCTime, NominalDiffTime, getCurrentTime)
+import Data.Time.Clock (NominalDiffTime, getCurrentTime)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
+import HIT.Types.Identifier (Username (..))
 
 -- JWTClaimsSet is a data type, represents a JSON object with claims in its body
-makeClaims :: Text -> IO JWT.JWTClaimsSet
+makeClaims :: Username -> IO JWT.JWTClaimsSet
 makeClaims username = do 
         time <- getCurrentTime
 
         pure $ mempty 
-                { JWT.sub = JWT.stringOrURI username        -- subject
+                { JWT.sub = JWT.stringOrURI (username.name)        -- subject
                 , JWT.exp = JWT.numericDate $ day $ utcTimeToPOSIXSeconds $ time   -- expires 
                 }
 
 
---sign claims using generated key (static rn)
+--sign claims using generated key (static rn). Might not need to pass in IO JWT...
 signClaims :: Text -> IO JWT.JWTClaimsSet -> IO Text
 signClaims key ioClaims = do
 
@@ -55,14 +63,14 @@ verifyHeader jwt = let
 
 
 --verify signature to ensure message has not been altered, check header to ensure matching algorithm
-verifySignature :: Text -> Text -> Maybe (JWT.VerifiedJWT)
+verifySignature :: Text -> Text -> Maybe (JWT.JWT JWT.VerifiedJWT)
 verifySignature input key =
         case JWT.decode input of 
                 Nothing -> Nothing 
                 Just unverifiedJWT -> 
                         case verifyHeader unverifiedJWT of     
                                 Nothing -> Nothing
-                                Just algorithm -> let
+                                Just _ -> let
                                         secret = JWT.hmacSecret key 
                                         in JWT.verify (JWT.toVerify secret) unverifiedJWT
 
@@ -70,7 +78,7 @@ verifySignature input key =
 verifyExpiration :: JWT.JWT JWT.VerifiedJWT -> IO (Maybe JWT.JWTClaimsSet) 
 verifyExpiration input = let 
                 jwtClaims = JWT.claims input
-                in case exp jwtClaims of 
+                in case jwtClaims.exp of 
                         Nothing -> pure Nothing 
                         Just expires -> do
                                 currentTime <- getCurrentTime
@@ -84,7 +92,7 @@ verifyExpiration input = let
 getSubject :: JWT.JWTClaimsSet -> Maybe Text
 getSubject claims = case 
         JWT.sub claims of 
-                Nothing -> pure Nothing 
+                Nothing -> Nothing 
                 Just subject -> Just (JWT.stringOrURIToText subject)     -- look into simplifying with monadic funcs e.g. <$> or >>= so context extraction is avoided
                                 
                                  
@@ -94,4 +102,4 @@ day  diffTime = diffTime + 86400
 
 --use a constant key for now (used randomkeygen/hmac-key.com) and HMAC-SHA256 / Base64
 secretKey :: Text
-secretKey = ynX9es95xtGFL/zlw5qe1p8xH9pTUmrs1E/N1ywNON8
+secretKey = "ynX9es95xtGFL/zlw5qe1p8xH9pTUmrs1E/N1ywNON8"
