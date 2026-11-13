@@ -45,7 +45,6 @@ checkedHitDb =
             (field "id" (retype Pg.text) notNull)
             (field "email" Pg.text notNull)
             (field "password_hash" Pg.text notNull)
-            (field "api_token" (retype Pg.text) notNull)
             (field "timezone" Pg.text notNull)
             (field "created_at" utcTime notNull)
             (field "modified_at" utcTime notNull)
