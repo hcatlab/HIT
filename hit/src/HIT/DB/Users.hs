@@ -6,7 +6,6 @@
 module HIT.DB.Users
   ( createUser,
     loginUser,
-    lookupUserByToken,
     getUserById,
     updateUser,
     deleteUserById,
