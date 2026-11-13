@@ -99,7 +99,11 @@ server = hitAPI :<|> pure hitOpenAPI
       res <- withDb $ \conn -> createUser conn uid em pw tz
       case res of
         Left msg -> throwError (err409 {errBody = LBS.fromStrict (Text.encodeUtf8 msg)})
-        Right u -> pure (SignupResponse u.apiToken (toPublicUser u))
+        --Right u -> pure (SignupResponse u.apiToken (toPublicUser u))
+        Right u -> do
+          signedClaims <- liftIO $ signClaims secretKey (makeClaims u.id)
+
+          pure (SignupResponse (APIToken signedClaims) (toPublicUser u))
 
     login (LoginRequest uid pw) = do
       mUser <- withDb $ \conn -> loginUser conn uid pw
