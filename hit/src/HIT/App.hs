@@ -21,7 +21,7 @@ import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import HIT.API
 import HIT.Config (Config (..))
-import HIT.DB (createUser, loginUser, lookupUserByToken)
+import HIT.DB (createUser, loginUser, lookupUserByToken, getUserById)
 import HIT.Env (AppM, Env (..), withDb)
 import HIT.Handlers (goalsServer, habitsServer, intentionsServer, usersServer)
 import HIT.OpenAPI (hitOpenAPI)
@@ -37,6 +37,8 @@ import Network.Wai.Middleware.Cors
 import Network.Wai.Middleware.RequestLogger (logStdout)
 import Servant
 import Servant.Server.Experimental.Auth (AuthHandler, AuthServerData, mkAuthHandler)
+import HIT.Auth.JWT (secretKey, makeClaims, signClaims, validateJWT)
+import HIT.Types.Identifier (Username (..))   -- maybe types out of scope of app in haskell convention ?
 
 type instance AuthServerData (AuthProtect "api-token") = User
 
@@ -84,6 +86,7 @@ isLocalOrigin o =
       "https://[::1]"
     ]
 
+--update server login to generate the JWT token and put it in the LoginResponse {token}
 server :: ServerT HITAPIWithDocs AppM
 server = hitAPI :<|> pure hitOpenAPI
   where
@@ -102,20 +105,31 @@ server = hitAPI :<|> pure hitOpenAPI
       mUser <- withDb $ \conn -> loginUser conn uid pw
       case mUser of
         Nothing -> throwError err401
-        Just u -> pure (LoginResponse u.apiToken (toPublicUser u))
+        Just u -> do
+          signedClaims <- liftIO $ signClaims secretKey (makeClaims u.id)
+
+          pure (LoginResponse (APIToken signedClaims) (toPublicUser u))
+          
+          
+          --pure (LoginResponse u.apiToken (toPublicUser u))
 
     me user = pure (toPublicUser user)
 
+--update to verify the JWT token NOT do a db lookup to compare tokens
 authHandler :: Env -> AuthHandler Request User
 authHandler env = mkAuthHandler $ \req -> do
   tokenText <-
     case extractBearerToken req of
       Nothing -> throwError err401
-      Just t -> pure t
-  mUser <- liftIO (withResource (pool env) (\conn -> lookupUserByToken conn (APIToken tokenText)))
-  case mUser of
+      Just t -> pure t 
+  validToken <- liftIO $ validateJWT tokenText secretKey
+  case validToken of 
     Nothing -> throwError err401
-    Just u -> pure u
+    Just sub -> do 
+      mUser <- liftIO (withResource (pool env) (\conn -> getUserById conn (Username sub)))  -- assume if JWT is valid then subject (username is too), check it still exists in db
+      case mUser of
+        Nothing -> throwError err401
+        Just u -> pure u
 
 extractBearerToken :: Request -> Maybe Text
 extractBearerToken req = do
