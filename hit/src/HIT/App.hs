@@ -13,7 +13,7 @@ where
 
 import Control.Applicative ((<|>))
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Reader (runReaderT)
+import Control.Monad.Trans.Reader (ask, runReaderT)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Pool (withResource)
@@ -100,7 +100,8 @@ server = hitAPI :<|> pure hitOpenAPI
       case res of
         Left msg -> throwError (err409 {errBody = LBS.fromStrict (Text.encodeUtf8 msg)})
         Right u -> do
-          signedClaims <- liftIO $ signClaims secretKey (makeClaims u.id)
+          env <- ask
+          signedClaims <- liftIO $ signClaims env.config.jwtKey (makeClaims u.id)
 
           pure (SignupResponse (APIToken signedClaims) (toPublicUser u))
 
@@ -109,7 +110,8 @@ server = hitAPI :<|> pure hitOpenAPI
       case mUser of
         Nothing -> throwError err401
         Just u -> do
-          signedClaims <- liftIO $ signClaims secretKey (makeClaims u.id)
+          env <- ask
+          signedClaims <- liftIO $ signClaims env.config.jwtKey (makeClaims u.id)
 
           pure (LoginResponse (APIToken signedClaims) (toPublicUser u))
     me user = pure (toPublicUser user)
@@ -121,7 +123,7 @@ authHandler env = mkAuthHandler $ \req -> do
     case extractBearerToken req of
       Nothing -> throwError err401
       Just t -> pure t 
-  validToken <- liftIO $ validateJWT tokenText secretKey
+  validToken <- liftIO $ validateJWT tokenText env.config.jwtKey
   case validToken of 
     Nothing -> throwError err401
     Just sub -> do 
