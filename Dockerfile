@@ -25,6 +25,7 @@ COPY hit/migrations hit/migrations
 COPY hit/app hit/app
 COPY hit/test hit/test
 COPY hit-cli/src hit-cli/src
+COPY hit-cli/app hit-cli/app
 
 RUN cabal build hit:hit-server
 

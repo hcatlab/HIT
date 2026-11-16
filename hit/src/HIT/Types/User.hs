@@ -38,8 +38,6 @@ data User = User
     email :: Text,
     -- | bcrypt hash of the password
     passwordHash :: Text,
-    -- | bearer token, unique, replaced on each login
-    apiToken :: APIToken,
     -- | iana zone name, the user's today is the current date there
     timezone :: Text,
     -- | creation time
